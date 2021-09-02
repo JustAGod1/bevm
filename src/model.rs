@@ -13,12 +13,15 @@ pub enum Register {
     // therefore I cannot treat this register the same way
     // so I just don't include it here because actually I don't need to update it
     // via user's code
+
     Status,
 
     MicroCommand,
+
     // Buffer,
     // It probably should be here too. But it has unusual behaviour
     // namely it's type is u17
+
     Address,
     Command,
     Data,
@@ -125,7 +128,7 @@ impl Registers {
 
 pub struct Memory<P: Parser> {
     pub parser: P,
-    pub data: Vec<MemoryCell>,
+    pub data: Vec<Rc<RefCell<MemoryCell>>>,
 }
 
 #[derive(Clone)]
@@ -178,11 +181,11 @@ impl Computer {
 
             registers: Registers::new(),
             general_memory: Rc::new(RefCell::new(Memory {
-                data: vec![MemoryCell::new(); 2048],
+                data: vec![Rc::new(RefCell::new(MemoryCell::new())); 2048],
                 parser: GeneralParser::new()
             })),
             mc_memory: Rc::new(RefCell::new(Memory {
-                data: vec![MemoryCell::new(); 256],
+                data: vec![Rc::new(RefCell::new(MemoryCell::new())); 256],
                 parser: McParser::new()
             })),
             logs: Vec::<LogEntry>::new()
@@ -205,7 +208,7 @@ impl Computer {
     }
 
     pub fn micro_step(&mut self) -> ExecutionResult {
-        let cmd = parse(self.mc_memory.borrow_mut().data.get(self.registers.r_micro_command_counter as usize).unwrap().get());
+        let cmd = parse(self.mc_memory.borrow_mut().data.get(self.registers.r_micro_command_counter as usize).unwrap().borrow().get());
         let result = cmd.run(self);
         if !matches!(result, ExecutionResult::JUMPED) {
             self.registers.r_micro_command_counter += 1;

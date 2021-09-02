@@ -50,12 +50,27 @@ impl PopupManager {
     }
 }
 
+pub struct GuiState {
+    pub computer: Computer,
+    pub popup_manager: PopupManager
+}
+
+impl GuiState {
+
+    pub fn new(computer: Computer) -> GuiState {
+        GuiState {
+            computer,
+            popup_manager: PopupManager::new()
+        }
+    }
+
+}
+
 pub struct Gui {
-    computer: Computer,
     left_window: ToolsWindow,
     right_window: ToolsWindow,
     bottom_window: ToolsWindow,
-    popup_manager: PopupManager,
+    state: GuiState
 }
 
 impl Gui {
@@ -79,8 +94,7 @@ impl Gui {
                 0, 200,
                 vec![Box::new(LogTool::new())]
             ),
-            popup_manager: PopupManager::new(),
-            computer,
+            state: GuiState::new(computer)
         };
     }
 
@@ -145,7 +159,7 @@ impl Gui {
             let token = ui.push_font(font);
 
             let closed = !self.draw_ui(&ui, &mut window);
-            self.popup_manager.do_open_and_draw(&ui, &mut self.computer);
+            self.state.popup_manager.do_open_and_draw(&ui, &mut self.state.computer);
 
             token.pop(&ui);
 
@@ -193,11 +207,11 @@ impl Gui {
 
 
         if let Some(token) = window.begin(&ui) {
-            self.left_window.draw(ui, &mut self.computer, &mut self.popup_manager);
+            self.left_window.draw(ui, &mut self.state);
             ui.same_line(0.0);
-            self.right_window.draw(ui, &mut self.computer, &mut self.popup_manager);
+            self.right_window.draw(ui, &mut self.state);
 
-            self.bottom_window.draw(ui, &mut self.computer, &mut self.popup_manager);
+            self.bottom_window.draw(ui, &mut self.state);
             token.end(ui);
         }
 

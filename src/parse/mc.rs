@@ -124,6 +124,7 @@ impl MicroCommand for OperationalCommand0 {
                     .data
                     .get_mut(computer.registers.r_address.bitand(0x7FF) as usize)
                     .unwrap()
+                    .borrow_mut()
                     .set(computer.registers.r_data);
                 computer.log(false, format!("Присвоил значение {:0>4X} в ячейку {:0>4X}", computer.registers.r_data, computer.registers.r_address));
             },
@@ -133,6 +134,7 @@ impl MicroCommand for OperationalCommand0 {
                     .data
                     .get_mut(computer.registers.r_address.bitand(0x7FF) as usize)
                     .unwrap()
+                    .borrow_mut()
                     .get();
                 computer.log(false, format!("Прочитал значение {:0>4X} из ячейки {:0>4X}", computer.registers.r_data, computer.registers.r_address));
 

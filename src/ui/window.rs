@@ -1,11 +1,11 @@
-use crate::ui::gui::PopupManager;
+use crate::ui::gui::{PopupManager, Gui, GuiState};
 use imgui::{Ui, ChildWindow, im_str, ImString, MenuItem};
 use crate::model::Computer;
 
 pub trait Tool {
     fn title(&self) -> String;
 
-    fn draw(&mut self, computer: &mut Computer, ui: &Ui, manager: &mut PopupManager);
+    fn draw(&mut self, ui: &Ui, state: &mut GuiState);
 }
 
 pub struct ToolsWindow {
@@ -50,7 +50,7 @@ impl ToolsWindow {
         ui.content_region_avail()[1] + self.height
     }
 
-    pub fn draw(&mut self, ui: &Ui, computer: &mut Computer, manager: &mut PopupManager) {
+    pub fn draw(&mut self, ui: &Ui, state: &mut GuiState) {
         let token = ChildWindow::new(&self.id)
             .size([self.width(ui), self.height(ui)])
             .movable(false)
@@ -81,7 +81,7 @@ impl ToolsWindow {
 
         let tool = self.tools.get_mut(self.tool_selector).unwrap();
 
-        tool.draw(computer, ui, manager);
+        tool.draw(ui, state);
 
         token.end(ui);
     }

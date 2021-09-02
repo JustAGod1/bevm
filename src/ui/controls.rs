@@ -2,7 +2,7 @@ use crate::model::{Computer, Register};
 use imgui::{Ui, ChildWindow, TreeNode, im_str, ImString};
 use image::flat::Error::TooLarge;
 use crate::parse::mc::ExecutionResult;
-use crate::ui::gui::PopupManager;
+use crate::ui::gui::{PopupManager, Gui, GuiState};
 use crate::ui::popup::PopupHalted;
 use crate::ui::window::Tool;
 
@@ -13,9 +13,9 @@ impl Tool for ControlsTool {
         "Панель управления".to_string()
     }
 
-    fn draw(&mut self, computer: &mut Computer, ui: &Ui, manager: &mut PopupManager) {
-        self.draw_registers(computer, ui);
-        self.draw_control(computer, ui, manager);
+    fn draw(&mut self, ui: &Ui, gui: &mut GuiState) {
+        self.draw_registers(&mut gui.computer, ui);
+        self.draw_control(&mut gui.computer, ui);
     }
 }
 
@@ -24,7 +24,7 @@ impl ControlsTool {
         ControlsTool {}
     }
 
-    fn draw_control(&mut self, computer: &mut Computer, ui: &Ui, manager: &mut PopupManager) {
+    fn draw_control(&mut self, computer: &mut Computer, ui: &Ui) {
         let token = ChildWindow::new("control")
             .border(true)
             .movable(false)

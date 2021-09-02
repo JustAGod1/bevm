@@ -3,7 +3,7 @@ use imgui::{Ui, ChildWindow, StyleColor, Id, im_str, ImString, MenuItem};
 use crate::parse::mc::parse;
 use crate::parse::Parser;
 use crate::ui::window::Tool;
-use crate::ui::gui::PopupManager;
+use crate::ui::gui::{PopupManager, Gui, GuiState};
 use std::rc::Rc;
 use std::cell::RefCell;
 use imgui::__core::cell::RefMut;
@@ -24,7 +24,8 @@ impl CellRepresentation {
         };
     }
 
-    fn draw_hex(&self, cell: &mut MemoryCell, ui: &Ui) {
+    fn draw_hex(&self, cell: RefMut<MemoryCell>, ui: &Ui) {
+        let mut cell = cell;
         let mut data = ImString::from(format!("{:0>4X}", cell.get()));
         let width_t = ui.push_item_width(70.0);
         if ui.input_text(im_str!(""), &mut data)
@@ -39,7 +40,8 @@ impl CellRepresentation {
         width_t.pop(ui);
 
     }
-    fn draw_binary(&self, cell: &mut MemoryCell, ui: &Ui) {
+    fn draw_binary(&self, cell: RefMut<MemoryCell>, ui: &Ui) {
+        let mut cell = cell;
         let mut data = ImString::from(format!("{:0>16b}", cell.get()));
         let width_t = ui.push_item_width(160.0);
         if ui.input_text(im_str!(""), &mut data)
@@ -54,7 +56,7 @@ impl CellRepresentation {
         width_t.pop(ui);
 
     }
-    fn draw(&self, cell: &mut MemoryCell, ui: &Ui) {
+    fn draw(&self, cell: RefMut<MemoryCell>, ui: &Ui) {
         match self {
             CellRepresentation::Hex => self.draw_hex(cell, ui),
             CellRepresentation::Binary => self.draw_binary(cell, ui),
@@ -77,14 +79,14 @@ impl <P: Parser, F: Fn(&Computer) -> u16>Tool for CellsTool<P, F> {
         self.title.clone()
     }
 
-    fn draw(&mut self, computer: &mut Computer, ui: &Ui, manager: &mut PopupManager) {
+    fn draw(&mut self, ui: &Ui, gui: &mut GuiState) {
         let mut idx = 0u32;
 
         self.draw_representation_selection(ui);
 
 
 
-        let current_executed = (self.counter_register)(computer);
+        let current_executed = (self.counter_register)(&mut gui.computer);
 
         let (parser, mut data) = RefMut::map_split(self.page.borrow_mut(), |r| (&mut r.parser, &mut r.data));
 
@@ -97,13 +99,13 @@ impl <P: Parser, F: Fn(&Computer) -> u16>Tool for CellsTool<P, F> {
             } else {
                 None
             };
-            self.representation.draw(cell, ui);
+            self.representation.draw(cell.borrow_mut(), ui);
             if let Some(t) = t {
                 t.pop(ui);
             }
 
 
-            let command = parser.parse(cell.get());
+            let command = parser.parse(cell.borrow().get());
             ui.same_line(0.0);
 
             if parser.supports_rev_parse() {
@@ -116,10 +118,10 @@ impl <P: Parser, F: Fn(&Computer) -> u16>Tool for CellsTool<P, F> {
                 {
                     match parser.rev_parse(content.to_string()) {
                         Ok(opcode) => {
-                            cell.set(opcode)
+                            cell.borrow_mut().set(opcode)
                         }
                         Err(msg) => {
-                            manager.open(PopupParseError::new(content.to_string(), msg.to_string()))
+                            gui.popup_manager.open(PopupParseError::new(content.to_string(), msg.to_string()))
                         }
                     }
                 }
