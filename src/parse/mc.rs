@@ -103,13 +103,30 @@ impl MicroCommand for OperationalCommand0 {
     fn run(&self, computer: &mut Computer) -> ExecutionResult{
         match self.shift() {
             Shift::Right => {
+                let c = computer.registers.get_overflow();
+
+                let overflow = bit_at!(computer.registers.r_counter, 0);
                 computer.registers.r_buffer = (computer.registers.r_counter as u32).shr(1u32);
                 computer.log(true, format!("Присвоил регистру БР значение {:0>4X} из сдвинутого вправо регистра А({:0>4X})", computer.registers.r_buffer, computer.registers.r_counter));
+                if c {
+                    computer.registers.r_buffer = computer.registers.r_buffer.bitor(0x8000);
+                    computer.log(true, format!("Установил 15 бит регистра БР в 1 так как до начала сдвига был установлен флаг C"));
+                }
+                if overflow {
+                    computer.log(true, format!("Установил 16 бит регистра БР в 1 т.к. произошло переполнение"));
+                    computer.registers.r_buffer = (computer.registers.r_counter as u32).bitor(0x10000);
+                    computer.registers.set_overflow(true);
+                }
                 return ExecutionResult::SUCCESS;
             },
             Shift::Left =>  {
-                computer.registers.r_buffer = (computer.registers.r_counter as u32).shl(1u32);
+                let c = computer.registers.get_overflow();
+                computer.registers.r_buffer = (computer.registers.r_counter as u32).shl(1u32).bitand(0x1FFFF);
                 computer.log(true, format!("Присвоил регистру БР значение {:0>4X} из сдвинутого влево регистра А({:0>4X})", computer.registers.r_buffer, computer.registers.r_counter));
+                if c {
+                    computer.registers.r_buffer = computer.registers.r_buffer.bitor(0x1);
+                    computer.log(true, format!("Установил 0 бит регистра БР в 1 так как до начала сдвига был установлен флаг C"));
+                }
                 return ExecutionResult::SUCCESS;
 
             }

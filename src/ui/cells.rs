@@ -1,5 +1,5 @@
 use crate::model::{Computer, MemoryCell, Memory, Register};
-use imgui::{Ui, ChildWindow, StyleColor, Id, im_str, ImString, MenuItem};
+use imgui::{Ui, ChildWindow, StyleColor, Id, im_str, ImString, MenuItem, FocusedWidget};
 use crate::parse::mc::parse;
 use crate::parse::Parser;
 use crate::ui::window::Tool;
@@ -38,7 +38,6 @@ impl CellRepresentation {
             }
         }
         width_t.pop(ui);
-
     }
     fn draw_binary(&self, cell: RefMut<MemoryCell>, ui: &Ui) {
         let mut cell = cell;
@@ -68,17 +67,12 @@ impl CellRepresentation {
 pub struct CellsTool<P: Parser, F>
     where F: Fn(&Computer) -> u16
 {
-    title: String,
     page: Rc<RefCell<Memory<P>>>,
     counter_register: F,
     representation: CellRepresentation
 }
 
 impl <P: Parser, F: Fn(&Computer) -> u16>Tool for CellsTool<P, F> {
-    fn title(&self) -> String {
-        self.title.clone()
-    }
-
     fn draw(&mut self, ui: &Ui, gui: &mut GuiState) {
         let mut idx = 0u32;
 
@@ -87,6 +81,8 @@ impl <P: Parser, F: Fn(&Computer) -> u16>Tool for CellsTool<P, F> {
 
 
         let current_executed = (self.counter_register)(&mut gui.computer);
+
+        let mut next_rev_focused = false;
 
         let (parser, mut data) = RefMut::map_split(self.page.borrow_mut(), |r| (&mut r.parser, &mut r.data));
 
@@ -110,6 +106,10 @@ impl <P: Parser, F: Fn(&Computer) -> u16>Tool for CellsTool<P, F> {
 
             if parser.supports_rev_parse() {
                 let mut content = ImString::with_capacity(50);
+                if next_rev_focused {
+                    ui.set_keyboard_focus_here(FocusedWidget::Next);
+                    next_rev_focused = false
+                }
                 content.push_str(command.as_str());
                 if ui.input_text(im_str!("###mnemonic"), &mut content)
                     .callback_always(false)
@@ -118,7 +118,8 @@ impl <P: Parser, F: Fn(&Computer) -> u16>Tool for CellsTool<P, F> {
                 {
                     match parser.rev_parse(content.to_string()) {
                         Ok(opcode) => {
-                            cell.borrow_mut().set(opcode)
+                            next_rev_focused = true;
+                            cell.borrow_mut().set(opcode);
                         }
                         Err(msg) => {
                             gui.popup_manager.open(PopupParseError::new(content.to_string(), msg.to_string()))
@@ -137,9 +138,8 @@ impl <P: Parser, F: Fn(&Computer) -> u16>Tool for CellsTool<P, F> {
 
 impl <P: Parser, F: Fn(&Computer) -> u16> CellsTool<P, F> {
 
-    pub fn new<S: Into<String>>(title: S, page: Rc<RefCell<Memory<P>>>, counter_register: F) -> CellsTool<P, F> {
+    pub fn new(page: Rc<RefCell<Memory<P>>>, counter_register: F) -> CellsTool<P, F> {
         CellsTool {
-            title: title.into(),
             counter_register,
             page,
             representation: CellRepresentation::Hex

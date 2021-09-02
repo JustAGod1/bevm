@@ -1,71 +1,44 @@
 use crate::ui::gui::{PopupManager, Gui, GuiState};
-use imgui::{Ui, ChildWindow, im_str, ImString, MenuItem};
+use imgui::{Ui, ChildWindow, im_str, ImString, MenuItem, ImStr};
 use crate::model::Computer;
+use crate::ui::{relative_width, relative_height};
 
 pub trait Tool {
-    fn title(&self) -> String;
-
     fn draw(&mut self, ui: &Ui, state: &mut GuiState);
 }
 
-pub struct ToolsWindow {
+pub struct WindowTool {
     width: f32,
     height: f32,
     id: String,
     tool_selector: usize,
-    tools: Vec<Box<dyn Tool>>,
+    tools: Vec<(&'static str, Box<dyn Tool>)>,
 
     vertical_scroll: bool,
 }
 
+impl Tool for WindowTool {
 
-impl ToolsWindow {
-    pub fn new<S: Into<String>>(id: S, width: i32, height: i32, tools: Vec<Box<dyn Tool>>) -> ToolsWindow {
-        assert!(!tools.is_empty(), "Expected at least one tool");
-        ToolsWindow {
-            id: id.into(),
-            width: width as f32,
-            height: height as f32,
-            tool_selector: 0,
-            tools,
-            vertical_scroll: false,
-        }
-    }
-
-
-    pub fn with_vertical_scroll(&mut self) -> &mut ToolsWindow {
-        self.vertical_scroll = true;
-        self
-    }
-
-    fn width(&self, ui: &Ui) -> f32 {
-        if self.width >= 0.0 { return self.width; }
-
-        ui.content_region_avail()[0] + self.width
-    }
-
-    fn height(&self, ui: &Ui) -> f32 {
-        if self.height >= 0.0 { return self.height; }
-
-        ui.content_region_avail()[1] + self.height
-    }
-
-    pub fn draw(&mut self, ui: &Ui, state: &mut GuiState) {
+    fn draw(&mut self, ui: &Ui, state: &mut GuiState) {
         let token = ChildWindow::new(&self.id)
-            .size([self.width(ui), self.height(ui)])
+            .size([relative_width(self.width, ui), relative_height(self.height, ui)])
             .movable(false)
+            .border(true)
             .menu_bar(true)
             .always_vertical_scrollbar(self.vertical_scroll)
             .begin(ui);
-        if token.is_none() { return; }
+        if token.is_none() {
+            return;
+        }
         let token = token.unwrap();
 
         ui.menu_bar(|| {
-            let title = ImString::from(self.tools.get(self.tool_selector).unwrap().title());
+
+            let title = ImString::new(self.tools.get(self.tool_selector).unwrap().0);
             if self.tools.len() > 1 {
                 ui.menu(title.as_ref(), true, || {
                     for i in 0..self.tools.len() {
-                        let name = ImString::from(self.tools.get(i).unwrap().title());
+                        let name = ImString::new(self.tools.get(i).unwrap().0);
                         if MenuItem::new(name.as_ref())
                             .selected(i == self.tool_selector)
                             .build(ui)
@@ -79,10 +52,41 @@ impl ToolsWindow {
             }
         });
 
-        let tool = self.tools.get_mut(self.tool_selector).unwrap();
+        let (_, tool) = self.tools.get_mut(self.tool_selector).unwrap();
 
         tool.draw(ui, state);
 
         token.end(ui);
     }
+}
+
+impl WindowTool {
+
+    pub fn single_tool(width: i32, height: i32, tool_name: &'static str, tool: Box<dyn Tool>) -> WindowTool {
+        Self::new(
+            tool_name.to_string(),
+            width, height,
+            vec![(tool_name, tool)]
+        )
+    }
+
+    pub fn new<S: Into<String>>(id: S, width: i32, height: i32, tools: Vec<(&'static str, Box<dyn Tool>)>) -> WindowTool {
+        assert!(!tools.is_empty(), "Expected at least one tool");
+        WindowTool {
+            id: id.into(),
+            width: width as f32,
+            height: height as f32,
+            tool_selector: 0,
+            tools,
+            vertical_scroll: false,
+        }
+    }
+
+
+    pub fn with_vertical_scroll(&mut self) -> &mut WindowTool {
+        self.vertical_scroll = true;
+        self
+    }
+
+
 }

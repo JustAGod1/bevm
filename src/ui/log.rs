@@ -19,10 +19,6 @@ impl LogTool {
 }
 
 impl Tool for LogTool {
-    fn title(&self) -> String {
-        "Лог".to_string()
-    }
-
     fn draw(&mut self, ui: &Ui, gui: &mut GuiState) {
         ui.menu_bar(|| {
             if let Some(t) = ui.begin_menu(im_str!("Фильтр"), true) {

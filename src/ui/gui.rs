@@ -14,7 +14,9 @@ use crate::ui::cells::CellsTool;
 use crate::ui::log::LogTool;
 use crate::ui::controls::ControlsTool;
 use crate::ui::popup::Popup;
-use crate::ui::window::ToolsWindow;
+use crate::ui::window::{WindowTool, Tool};
+use crate::ui::layout::LayoutTool;
+use crate::ui::registers::RegistersTool;
 
 pub struct PopupManager {
     popup: Option<Box<dyn Popup>>,
@@ -42,7 +44,6 @@ impl PopupManager {
 
             self.popup = Some(popup);
         }
-
     }
 
     pub fn open<P>(&mut self, popup: P) where P: Popup, P: 'static {
@@ -52,49 +53,63 @@ impl PopupManager {
 
 pub struct GuiState {
     pub computer: Computer,
-    pub popup_manager: PopupManager
+    pub popup_manager: PopupManager,
 }
 
 impl GuiState {
-
     pub fn new(computer: Computer) -> GuiState {
         GuiState {
             computer,
-            popup_manager: PopupManager::new()
+            popup_manager: PopupManager::new(),
         }
     }
-
 }
 
 pub struct Gui {
-    left_window: ToolsWindow,
-    right_window: ToolsWindow,
-    bottom_window: ToolsWindow,
-    state: GuiState
+    content: LayoutTool,
+    state: GuiState,
 }
 
 impl Gui {
     pub fn new(computer: Computer) -> Gui {
         return Gui {
-            left_window: ToolsWindow::new(
-                "left",
-                500, -210,
-                vec![
-                    Box::new(CellsTool::new("Основная память", (&computer.general_memory).clone(), |c| c.registers.r_command_counter)),
-                    Box::new(CellsTool::new("Микрокоманды", (&computer.mc_memory).clone(), |c| c.registers.r_micro_command_counter as u16)),
-                ]
-            ),
-            right_window: ToolsWindow::new(
-                "right",
-                0, -210,
-                vec![Box::new(ControlsTool::new())]
-            ),
-            bottom_window: ToolsWindow::new(
-                "bottom",
-                0, 200,
-                vec![Box::new(LogTool::new())]
-            ),
-            state: GuiState::new(computer)
+            content:
+            LayoutTool::new_vertical("root")
+                .append(
+                    LayoutTool::new_horizontal("left")
+                        .append(
+                            WindowTool::new(
+                                "mem",
+                                500, 0,
+                                vec![
+                                    ("Основная память", Box::new(CellsTool::new((&computer.general_memory).clone(), |c| c.registers.r_command_counter))),
+                                    ("Память МПУ", Box::new(CellsTool::new((&computer.mc_memory).clone(), |c| c.registers.r_micro_command_counter as u16))),
+                                ],
+                            )
+                        )
+                        .append(
+                            LayoutTool::new_vertical("right")
+                                .append(
+                                    WindowTool::single_tool(
+                                        0, 200,
+                                        "Регистры", Box::new(RegistersTool::new()),
+                                    )
+                                )
+                                .append(
+                                    WindowTool::single_tool(
+                                        0, 200,
+                                        "Панель управления", Box::new(ControlsTool::new()),
+                                    )
+                                )
+                        )
+                        .size(0, -210)
+                )
+                .append(WindowTool::single_tool(
+                    0, 200,
+                    "Логи", Box::new(LogTool::new()),
+                )
+                ),
+            state: GuiState::new(computer),
         };
     }
 
@@ -207,11 +222,7 @@ impl Gui {
 
 
         if let Some(token) = window.begin(&ui) {
-            self.left_window.draw(ui, &mut self.state);
-            ui.same_line(0.0);
-            self.right_window.draw(ui, &mut self.state);
-
-            self.bottom_window.draw(ui, &mut self.state);
+            self.content.draw(ui, &mut self.state);
             token.end(ui);
         }
 

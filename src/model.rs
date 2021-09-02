@@ -176,16 +176,27 @@ pub struct Computer {
 }
 
 impl Computer {
+
+    fn mem(len: usize) -> Vec<Rc<RefCell<MemoryCell>>> {
+        let mut result = Vec::<Rc<RefCell<MemoryCell>>>::new();
+
+        for _ in 0..len {
+            result.push(Rc::new(RefCell::new(MemoryCell::new())))
+        }
+
+        result
+    }
+
     pub fn new() -> Computer {
         return Computer {
 
             registers: Registers::new(),
             general_memory: Rc::new(RefCell::new(Memory {
-                data: vec![Rc::new(RefCell::new(MemoryCell::new())); 2048],
+                data: Self::mem(2048),
                 parser: GeneralParser::new()
             })),
             mc_memory: Rc::new(RefCell::new(Memory {
-                data: vec![Rc::new(RefCell::new(MemoryCell::new())); 256],
+                data: Self::mem(256),
                 parser: McParser::new()
             })),
             logs: Vec::<LogEntry>::new()
