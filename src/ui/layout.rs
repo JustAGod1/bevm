@@ -13,6 +13,7 @@ pub struct LayoutTool {
 
 impl Tool for LayoutTool {
     fn draw(&mut self, ui: &Ui, state: &mut GuiState) {
+
         ChildWindow::new(self.id)
             .border(false)
             .size([relative_width(self.width, ui), relative_height(self.height, ui)])

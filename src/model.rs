@@ -8,19 +8,13 @@ use std::cell::RefCell;
 
 #[derive(Eq, PartialEq)]
 pub enum Register {
-    // McCounter
-    // it probably should be here but it has type u8 and
-    // therefore I cannot treat this register the same way
-    // so I just don't include it here because actually I don't need to update it
-    // via user's code
+     McCounter,
 
     Status,
 
     MicroCommand,
 
-    // Buffer,
-    // It probably should be here too. But it has unusual behaviour
-    // namely it's type is u17
+    Buffer,
 
     Address,
     Command,
@@ -31,10 +25,20 @@ pub enum Register {
 
 impl Register {
 
+    pub fn format(&self, computer: &Computer) -> String {
+        match self {
+            Register::McCounter => format!("{:0>2X}", computer.registers.r_micro_command_counter),
+            Register::Buffer => format!("{:0>5X}", computer.registers.r_buffer),
+            _ => format!("{:0>4X}", self.get(computer))
+        }
+
+    }
+
     pub fn mnemonic(&self) -> String {
         match self {
             Register::Status => "РС",
-
+            Register::McCounter => "СчМК",
+            Register::Buffer => "БР",
             Register::MicroCommand => "РМК",
             Register::Address => "РА",
             Register::Command => "РК",
@@ -45,7 +49,14 @@ impl Register {
 
     }
 
-    pub fn set(&self, computer: &mut Computer, data: u16) {
+    pub fn assign_wide(&self, computer: &mut Computer, data: u32) {
+        match self {
+            Register::Buffer => computer.registers.r_buffer = data.bitand(0x1FFFF),
+            _ => self.assign(computer, data as u16)
+        }
+    }
+
+    pub fn assign(&self, computer: &mut Computer, data: u16) {
         match self {
             Register::Status => computer.registers.r_status = data,
             Register::MicroCommand => computer.registers.r_micro_command = data,
@@ -53,10 +64,19 @@ impl Register {
             Register::Command => computer.registers.r_command = data,
             Register::Data => computer.registers.r_data = data,
             Register::CommandCounter => computer.registers.r_command_counter = data.bitand(0x7FF),
-            Register::Counter => computer.registers.r_counter = data
+            Register::Counter => computer.registers.r_counter = data,
+            Register::McCounter => computer.registers.r_micro_command_counter = data as u8,
+            Register::Buffer => computer.registers.r_buffer = data as u32
         }
     }
 
+    pub fn get_wide(&self, computer: &Computer) -> u32 {
+        match self {
+            Register::Buffer => computer.registers.r_buffer,
+            _ => self.get(computer) as u32
+        }
+
+    }
     pub fn get(&self, computer: &Computer) -> u16 {
         match self {
             Register::Status => computer.registers.r_status,
@@ -65,7 +85,9 @@ impl Register {
             Register::Command => computer.registers.r_command,
             Register::Data => computer.registers.r_data,
             Register::CommandCounter => computer.registers.r_command_counter,
-            Register::Counter => computer.registers.r_counter
+            Register::Counter => computer.registers.r_counter,
+            Register::McCounter => computer.registers.r_micro_command_counter as u16,
+            Register::Buffer => computer.registers.r_buffer as u16
         }
     }
 }

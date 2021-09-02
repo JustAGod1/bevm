@@ -271,7 +271,7 @@ impl MicroCommand for OperationalCommand1 {
                     register != Register::Counter && register != Register::CommandCounter,
                     format!("Перенес значение {:0>4X} из регистра БР в регистр {}", computer.registers.r_buffer, register.mnemonic())
                 );
-                register.set(computer, computer.registers.r_buffer.bitand(0xFFFF) as u16);
+                register.assign(computer, computer.registers.r_buffer.bitand(0xFFFF) as u16);
             }
         });
 
