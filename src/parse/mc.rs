@@ -3,12 +3,8 @@ use core::ops::*;
 use imgui::sys::igBeginChildFrame;
 use std::cell::Ref;
 use crate::parse::Parser;
+use crate::bit_at;
 
-macro_rules! bit_at {
-    ($opcode:expr, $pos:expr) => {
-        $opcode.bitand(1.shl($pos as u16) as u16) != 0
-    };
-}
 
 macro_rules! sub_sum {
         ($e:expr, $left:expr ,$right:expr) => {

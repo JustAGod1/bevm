@@ -17,6 +17,7 @@ use crate::ui::popup::Popup;
 use crate::ui::window::{WindowTool, Tool};
 use crate::ui::layout::LayoutTool;
 use crate::ui::registers::RegistersTool;
+use crate::ui::status::StatusTool;
 
 pub struct PopupManager {
     popup: Option<Box<dyn Popup>>,
@@ -91,14 +92,29 @@ impl Gui {
                             LayoutTool::new_vertical("right")
                                 .append(
                                     WindowTool::single_tool(
-                                        0, 200,
-                                        "Регистры", Box::new(RegistersTool::new()),
+                                        0, 250,
+                                        "Состояние ЭВМ",
+                                        LayoutTool::new_horizontal("regandstat")
+                                            .append(
+                                                WindowTool::single_tool(
+                                                    300, 0,
+                                                    "Регистры",
+                                                    RegistersTool::new()
+                                                )
+                                            )
+                                            .append(
+                                                WindowTool::single_tool(
+                                                    0, 0,
+                                                    "Разбор регистра статуса",
+                                                    StatusTool::new()
+                                                )
+                                            ),
                                     )
                                 )
                                 .append(
                                     WindowTool::single_tool(
                                         0, 200,
-                                        "Панель управления", Box::new(ControlsTool::new()),
+                                        "Панель управления", ControlsTool::new(),
                                     )
                                 )
                         )
@@ -106,7 +122,7 @@ impl Gui {
                 )
                 .append(WindowTool::single_tool(
                     0, 200,
-                    "Логи", Box::new(LogTool::new()),
+                    "Логи", LogTool::new(),
                 )
                 ),
             state: GuiState::new(computer),

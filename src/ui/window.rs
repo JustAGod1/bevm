@@ -62,11 +62,13 @@ impl Tool for WindowTool {
 
 impl WindowTool {
 
-    pub fn single_tool(width: i32, height: i32, tool_name: &'static str, tool: Box<dyn Tool>) -> WindowTool {
+    pub fn single_tool<T>(width: i32, height: i32, tool_name: &'static str, tool: T) -> WindowTool
+        where T: Tool, T: 'static
+    {
         Self::new(
             tool_name.to_string(),
             width, height,
-            vec![(tool_name, tool)]
+            vec![(tool_name, Box::new(tool))]
         )
     }
 

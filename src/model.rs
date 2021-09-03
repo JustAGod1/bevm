@@ -58,7 +58,7 @@ impl Register {
 
     pub fn assign(&self, computer: &mut Computer, data: u16) {
         match self {
-            Register::Status => computer.registers.r_status = data,
+            Register::Status => computer.registers.r_status = data.bitand(0x1FFF),
             Register::MicroCommand => computer.registers.r_micro_command = data,
             Register::Address => computer.registers.r_address = data,
             Register::Command => computer.registers.r_command = data,
