@@ -78,15 +78,15 @@ impl MicroCommand for ControlCommand {
                                    if self.needed_bit() { 1 } else { 0 }
         ));
         if bit_at!(self.register().get(computer), self.bit_location()) == self.needed_bit() {
-            computer.registers.r_micro_command_counter = self.jump_address();
             computer.log(true, format!("Присвоил значение {:0>4X} регистру СчМК", self.jump_address()));
+            computer.registers.r_micro_command_counter = self.jump_address();
             return ExecutionResult::JUMPED;
         }
 
         ExecutionResult::SUCCESS
     }
     fn mnemonic(&self) -> String {
-        format!("if {}[2^{}] == {} GOTO {}",
+        format!("if {}[{}] == {} GOTO {}",
                 self.register().mnemonic(),
                 self.bit_location(),
                 if self.needed_bit() {1} else {0},
@@ -227,6 +227,42 @@ impl MicroCommand for OperationalCommand1 {
             computer.log(false, "Оппа, моя остановочка.".to_string());
             return ExecutionResult::HALTED;
         }
+
+        let io = self.io();
+        if io.len() > 0 {
+            for cmd in io {
+                match cmd {
+                    IOControl::Connect => {
+                        if computer.registers.r_data == computer.registers.r_address {
+                            computer.log(true, "Установил флаг ВВОД-ВВЫОД и передал управление модулю взаимодействия с ВУ".to_string());
+                            computer.registers.set_io(true);
+                            computer.process_io_command();
+                        } else {
+                            computer.log(true, "Было запрошенно взаимодействие с ВУ но РД не равен РК. Запрос проигнорирован.".to_string());
+                        }
+                    }
+                    IOControl::DisableInterruption => {
+                        computer.log(false, "Запретил прерывания".to_string());
+                        computer.registers.set_allow_interrupt(false);
+                        computer.registers.set_interrupt(false);
+                    }
+                    IOControl::EnableInterruption => {
+                        computer.log(false, "Разрешил прерывания".to_string());
+                        computer.registers.set_allow_interrupt(true);
+                    }
+                    IOControl::Reset => {
+                        computer.log(false, "Сбросил флаги готовности ВУ".to_string());
+                        for device in &mut computer.io_devices {
+                            device.ready = false;
+                        }
+                    }
+
+                }
+            }
+
+            return ExecutionResult::SUCCESS;
+        }
+
         match self.c() {
             CUpdate::Reset => {
                 computer.log(false, "Сбросил флаг переноса".to_string());

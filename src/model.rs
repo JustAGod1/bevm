@@ -5,6 +5,7 @@ use crate::parse::Parser;
 use crate::parse::general::GeneralParser;
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::io::{BufReader, BufRead};
 
 #[derive(Eq, PartialEq)]
 pub enum Register {
@@ -144,6 +145,12 @@ impl Registers {
     status_flag!(1, set_null, get_null);
     status_flag!(2, set_negative, get_negative);
     status_flag!(4, set_allow_interrupt, get_allow_interupt);
+    status_flag!(5, set_interrupt, get_interupt);
+    status_flag!(6, set_io_ready, get_io_ready);
+    status_flag!(7, set_lever, get_lever);
+    status_flag!(8, set_program_mode, get_program_mode);
+    status_flag!(11, set_execute_by_tick, get_execute_by_tick);
+    status_flag!(12, set_io, get_io);
 
 
 }
@@ -189,11 +196,23 @@ pub struct LogEntry {
     pub info: String
 }
 
+#[derive(Copy, Clone)]
+pub struct IOCell {
+    pub data: u8,
+    pub ready: bool
+}
+
+impl IOCell {
+    fn new() -> IOCell {
+        IOCell { data: 0, ready: false }
+    }
+}
+
 pub struct Computer {
     pub registers: Registers,
     pub general_memory: Rc<RefCell<Memory<GeneralParser>>>,
     pub mc_memory: Rc<RefCell<Memory<McParser>>>,
-
+    pub io_devices: [IOCell; 16],
     logs: Vec<LogEntry>
 }
 
@@ -209,9 +228,56 @@ impl Computer {
         result
     }
 
-    pub fn new() -> Computer {
-        return Computer {
+    pub fn process_io_command(&mut self) {
+        let opcode = self.registers.r_data;
 
+        let num = opcode.bitand(0xF) as usize;
+        if opcode.bitand(0x0300) != 0 {
+            let data = self.registers.r_counter.bitand(0xFF) as u8;
+            self.log(false, format!("Перенес значение {:0>2X} из младших разрядов аккамулятора в ВУ номер {}", data, num));
+            self.io_devices.get_mut(num).unwrap().data = data;
+        }
+        else if opcode.bitand(0x0200) != 0 {
+            self.registers.r_counter = self.registers.r_counter.bitand(0xFF00);
+            let data = self.io_devices.get_mut(num as usize).unwrap().data as u16;
+            self.registers.r_counter = self.registers.r_counter.bitor(data);
+            self.log(false, format!("Перенес значение {:0>2X} из  ВУ номер {} в младшие разряды аккамулятора", data, num));
+        }
+        else if opcode.bitand(0x0100) != 0 {
+            self.registers.set_io_ready(self.io_devices.get(num).unwrap().ready);
+            self.log(false, format!("Опросил ВУ номер {} на предмет готовности", num));
+
+            if self.registers.get_io_ready() {
+                self.log(false, format!("ВУ номер {} оказалось готовым. Увеличил СК на единицу", num));
+                self.registers.r_command_counter += 1;
+            }
+        }
+        else {
+            self.log(false, format!("Сбросил флаг готовности ВУ номер {}", num));
+            self.io_devices[num].ready = false;
+        }
+
+        self.log(true, "Сбросил флаг ВВОД-ВВЫОД".to_string());
+        self.registers.set_io(false);
+
+    }
+
+    pub fn reset_memory(&mut self) {
+        let data = include_bytes!("mc.txt") as &[u8];
+        for line in BufReader::new(data).lines().map(|r| r.unwrap())
+        {
+            let splitted = line.split(" ").collect::<Vec<&str>>();
+            let address = u16::from_str_radix(splitted.get(0).unwrap(), 16).unwrap();
+            let value = u16::from_str_radix(splitted.get(1).unwrap(), 16).unwrap();
+
+            self.mc_memory.borrow_mut().data.get_mut(address as usize).unwrap().borrow_mut().set(value);
+        }
+
+    }
+
+    pub fn new() -> Computer {
+        let mut result = Computer {
+            io_devices: [IOCell::new(); 16],
             registers: Registers::new(),
             general_memory: Rc::new(RefCell::new(Memory {
                 data: Self::mem(2048),
@@ -222,7 +288,10 @@ impl Computer {
                 parser: McParser::new()
             })),
             logs: Vec::<LogEntry>::new()
-        }
+        };
+        result.reset_memory();
+
+        result
     }
 
     pub fn log(&mut self, micro_command: bool, info: String) {

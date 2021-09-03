@@ -35,6 +35,7 @@ impl Tool for RegistersTool {
 
         let computer = &mut state.computer;
 
+        ui.text(im_str!("Основные регистры"));
         unsafe {
             igBeginTable(im_str!("general_reg").as_ptr(), 2, ImGuiTableFlags_None as c_int, ImVec2::new(250.0, 0.0), 0.0);
             igTableNextRow(ImGuiTableRowFlags_None as c_int, 0.0);
@@ -45,40 +46,33 @@ impl Tool for RegistersTool {
             igEndTable()
         }
 
+        ui.text(im_str!("Регистры микрокоманд"));
+        unsafe {
+            igBeginTable(im_str!("mc_reg").as_ptr(), 2, ImGuiTableFlags_None as c_int, ImVec2::new(250.0, 0.0), 0.0);
+            igTableNextRow(ImGuiTableRowFlags_None as c_int, 0.0);
+            igTableNextColumn();
+            reg_field(ui, computer, Register::McCounter, "Счетчик микрокоманд. Текущая микрокоманда.");
+            igTableNextColumn();
+            reg_field(ui, computer, Register::Status, "Регистр состояния. В битах этого регистра хранится информация о состоянии ЭВМ.");
+            igTableNextRow(ImGuiTableRowFlags_None as c_int, 0.0);
+            igTableNextColumn();
 
-        if let Some(token) = TreeNode::new(im_str!("Регистры микрокоманд")).push(ui) {
-            unsafe {
-                igBeginTable(im_str!("mc_reg").as_ptr(), 2, ImGuiTableFlags_None as c_int, ImVec2::new(250.0, 0.0), 0.0);
-                igTableNextRow(ImGuiTableRowFlags_None as c_int, 0.0);
-                igTableNextColumn();
-                reg_field(ui, computer, Register::McCounter, "Счетчик микрокоманд. Текущая микрокоманда.");
-                igTableNextColumn();
-                reg_field(ui, computer, Register::Status, "Регистр состояния. В битах этого регистра хранится информация о состоянии ЭВМ.");
-                igTableNextRow(ImGuiTableRowFlags_None as c_int, 0.0);
-                igTableNextColumn();
-
-                reg_field(ui, computer, Register::MicroCommand, "Регистр микрокоманды. Сюда цпу помещает микрокоманду во время ее выполнения.");
-                igTableNextColumn();
-                reg_field(ui, computer, Register::Buffer, "Буфферный регистр. Через него проходят данные в микрокомандах.");
-                igTableNextRow(ImGuiTableRowFlags_None as c_int, 0.0);
-                igTableNextColumn();
+            reg_field(ui, computer, Register::MicroCommand, "Регистр микрокоманды. Сюда цпу помещает микрокоманду во время ее выполнения.");
+            igTableNextColumn();
+            reg_field(ui, computer, Register::Buffer, "Буфферный регистр. Через него проходят данные в микрокомандах.");
+            igTableNextRow(ImGuiTableRowFlags_None as c_int, 0.0);
+            igTableNextColumn();
 
 
-                reg_field(ui, computer, Register::Address, "Регистр адреса. Микрокоманда должна поместить адрес сюда, чтобы положить данные в БР");
-                igTableNextColumn();
-                reg_field(ui, computer, Register::Command, "Регистр команды. Микрокоманда помещает команду из БР сюда.");
-                igTableNextRow(ImGuiTableRowFlags_None as c_int, 0.0);
-                igTableNextColumn();
+            reg_field(ui, computer, Register::Address, "Регистр адреса. Микрокоманда должна поместить адрес сюда, чтобы положить данные в БР");
+            igTableNextColumn();
+            reg_field(ui, computer, Register::Command, "Регистр команды. Микрокоманда помещает команду из БР сюда.");
+            igTableNextRow(ImGuiTableRowFlags_None as c_int, 0.0);
+            igTableNextColumn();
 
-                reg_field(ui, computer, Register::Data, "Регистр данных. Сюда микрокоманды помещают данные.");
+            reg_field(ui, computer, Register::Data, "Регистр данных. Сюда микрокоманды помещают данные.");
 
-                igEndTable();
-                token.pop(ui);
-            }
-        } else {
-            if ui.is_item_hovered() {
-                ui.tooltip_text("... или же \"Не смотри сюда до последней лабы\"")
-            }
+            igEndTable();
         }
     }
 }

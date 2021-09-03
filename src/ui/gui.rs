@@ -12,12 +12,13 @@ use self::imgui::{WindowFlags, ImString, Id, ChildWindow, MenuItem, FontSource, 
 use crate::model::{Computer, Register, MemoryCell};
 use crate::ui::cells::CellsTool;
 use crate::ui::log::LogTool;
-use crate::ui::controls::ControlsTool;
+use crate::ui::controls::SmartControlsTool;
 use crate::ui::popup::Popup;
 use crate::ui::window::{WindowTool, Tool};
 use crate::ui::layout::LayoutTool;
 use crate::ui::registers::RegistersTool;
 use crate::ui::status::StatusTool;
+use crate::ui::io::IOTool;
 
 pub struct PopupManager {
     popup: Option<Box<dyn Popup>>,
@@ -99,22 +100,38 @@ impl Gui {
                                                 WindowTool::single_tool(
                                                     300, 0,
                                                     "Регистры",
-                                                    RegistersTool::new()
+                                                    RegistersTool::new(),
                                                 )
                                             )
                                             .append(
                                                 WindowTool::single_tool(
                                                     0, 0,
-                                                    "Разбор регистра статуса",
-                                                    StatusTool::new()
+                                                    "Разбор регистра статуса (РС)",
+                                                    StatusTool::new(),
                                                 )
                                             ),
                                     )
                                 )
                                 .append(
                                     WindowTool::single_tool(
-                                        0, 200,
-                                        "Панель управления", ControlsTool::new(),
+                                        315, 0,
+                                        "Панель управления", LayoutTool::new_vertical("execandio")
+                                            .append(
+                                                WindowTool::single_tool(
+                                                    0, 135,
+                                                    "Управление исполнением",
+                                                    SmartControlsTool::new(),
+                                                )
+                                            )
+                                            .append(
+                                                WindowTool::single_tool(
+                                                    0, 0,
+                                                    "Устройства Ввода/Вывода",
+                                                    IOTool::new(),
+                                                )
+
+                                            )
+                                        ,
                                     )
                                 )
                         )

@@ -11,6 +11,7 @@ mod window;
 mod layout;
 mod registers;
 mod status;
+mod io;
 
 pub fn relative_width(width: f32, ui: &Ui) -> f32 {
     if width >= 0.0 { return width; }
