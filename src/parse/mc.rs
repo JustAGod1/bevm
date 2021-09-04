@@ -2,8 +2,9 @@ use crate::model::{Computer, Register};
 use core::ops::*;
 use imgui::sys::igBeginChildFrame;
 use std::cell::Ref;
-use crate::parse::Parser;
+use crate::parse::{Parser, CommandInfo};
 use crate::bit_at;
+use imgui::Ui;
 
 
 macro_rules! sub_sum {
@@ -40,6 +41,25 @@ pub struct OperationalCommand1(u16);
 
 pub struct ControlCommand(u16);
 
+pub struct MicroCommandInfo {
+    command: Box<dyn MicroCommand>
+}
+
+impl MicroCommandInfo {
+    fn new(command: Box<dyn MicroCommand>) -> MicroCommandInfo {
+        MicroCommandInfo { command }
+    }
+}
+
+impl CommandInfo for MicroCommandInfo {
+    fn mnemonic(&self) -> String {
+        self.command.mnemonic()
+    }
+
+    fn draw_highlight(&self, ui: &Ui) {
+    }
+}
+
 pub struct McParser;
 impl McParser {
     pub fn new() -> McParser {
@@ -47,9 +67,9 @@ impl McParser {
     }
 }
 
-impl Parser for McParser {
-    fn parse(&self, opcode: u16) -> String {
-        parse(opcode).mnemonic()
+impl Parser<MicroCommandInfo> for McParser {
+    fn parse(&self, opcode: u16) -> MicroCommandInfo {
+        MicroCommandInfo::new(parse(opcode))
     }
 
     fn supports_rev_parse(&self) -> bool {
@@ -137,7 +157,6 @@ impl MicroCommand for OperationalCommand0 {
                     .data
                     .get_mut(computer.registers.r_address.bitand(0x7FF) as usize)
                     .unwrap()
-                    .borrow_mut()
                     .set(computer.registers.r_data);
                 computer.log(false, format!("Присвоил значение {:0>4X} в ячейку {:0>4X}", computer.registers.r_data, computer.registers.r_address));
             },
@@ -147,7 +166,6 @@ impl MicroCommand for OperationalCommand0 {
                     .data
                     .get_mut(computer.registers.r_address.bitand(0x7FF) as usize)
                     .unwrap()
-                    .borrow_mut()
                     .get();
                 computer.log(false, format!("Прочитал значение {:0>4X} из ячейки {:0>4X}", computer.registers.r_data, computer.registers.r_address));
 
@@ -162,8 +180,8 @@ impl MicroCommand for OperationalCommand0 {
             .map(
                 |r| if complement == Complement::Left
                 {
-                    computer.log(true, format!("Нашел дополнение до двойки от регистра {}({:0>4X})", r.mnemonic(), r.get(computer)));
-                    r.get(computer).bitxor(0xFFFF).wrapping_add(1)
+                    computer.log(true, format!("Инвертировал регистр {}({:0>4X})", r.mnemonic(), r.get(computer)));
+                    r.get(computer).bitxor(0xFFFF)
                 } else { r.get(computer) }
             )
             .unwrap_or(0);
@@ -172,8 +190,8 @@ impl MicroCommand for OperationalCommand0 {
             .map(
                 |r| if complement == Complement::Right
                 {
-                    computer.log(true, format!("Нашел дополнение до двойки от регистра {}({:0>4X})", r.mnemonic(), r.get(computer)));
-                    r.get(computer).bitxor(0xFFFF).wrapping_add(1)
+                    computer.log(true, format!("Инвертировал регистр {}({:0>4X})", r.mnemonic(), r.get(computer)));
+                    r.get(computer).bitxor(0xFFFF)
                 } else { r.get(computer) }
             )
             .unwrap_or(0);
@@ -182,11 +200,11 @@ impl MicroCommand for OperationalCommand0 {
         match self.operation() {
             Operation::LeftPlusRight => {
                 computer.log(true, format!("Произвел операцию {}({:0>4X} + {:0>4X}) и положил в БР", self.expression_mnemonic(), left, right));
-                computer.registers.r_buffer = (right as u32) + (left as u32);
+                computer.registers.r_buffer = (right as u32).wrapping_add(left as u32);
             }
             Operation::LeftPlusRightPlusOne => {
                 computer.log(true, format!("Произвел операцию {}({:0>4X} + {:0>4X} + 1) и положил в БР", self.expression_mnemonic(), left, right));
-                computer.registers.r_buffer = (right as u32) + (left as u32) + 1;
+                computer.registers.r_buffer = (right as u32).wrapping_add(left.wrapping_add(1) as u32);
             }
             Operation::LeftAndRight => {
                 computer.log(true, format!("Произвел операцию {}({:0>4X} & {:0>4X}) и положил в БР", self.expression_mnemonic(), left, right));
@@ -288,12 +306,20 @@ impl MicroCommand for OperationalCommand1 {
             if computer.registers.r_buffer == 0 {
                 computer.registers.set_null(true);
                 computer.log(false, "Установил флаг \"нуль\"".to_string());
+            } else {
+                computer.registers.set_null(false);
+                computer.log(false, "Убрал флаг \"нуль\"".to_string());
+
             }
         }
         if nz == NZUpdate::N || nz == NZUpdate::NZ {
             if bit_at!(computer.registers.r_buffer as u16, 15) {
                 computer.registers.set_negative(true);
                 computer.log(false, "Установил флаг \"знак\"".to_string());
+            } else {
+                computer.registers.set_negative(false);
+                computer.log(false, "Убрал флаг \"знак\"".to_string());
+
             }
         }
 

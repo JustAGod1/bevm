@@ -1,11 +1,12 @@
 use std::time::SystemTime;
 use core::ops::*;
-use crate::parse::mc::{ExecutionResult, parse, McParser};
-use crate::parse::Parser;
-use crate::parse::general::GeneralParser;
+use crate::parse::mc::{ExecutionResult, parse, McParser, MicroCommand, MicroCommandInfo};
+use crate::parse::{Parser, CommandInfo};
+use crate::parse::general::{GeneralParser, GeneralCommandInfo};
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::io::{BufReader, BufRead};
+use std::marker::PhantomData;
 
 #[derive(Eq, PartialEq)]
 pub enum Register {
@@ -155,9 +156,10 @@ impl Registers {
 
 }
 
-pub struct Memory<P: Parser> {
+pub struct Memory<I: CommandInfo,P: Parser<I>> {
     pub parser: P,
-    pub data: Vec<Rc<RefCell<MemoryCell>>>,
+    pub data: Vec<MemoryCell>,
+    phantom: PhantomData<I>
 }
 
 #[derive(Clone)]
@@ -210,19 +212,19 @@ impl IOCell {
 
 pub struct Computer {
     pub registers: Registers,
-    pub general_memory: Rc<RefCell<Memory<GeneralParser>>>,
-    pub mc_memory: Rc<RefCell<Memory<McParser>>>,
+    pub general_memory: Rc<RefCell<Memory<GeneralCommandInfo, GeneralParser>>>,
+    pub mc_memory: Rc<RefCell<Memory<MicroCommandInfo, McParser>>>,
     pub io_devices: [IOCell; 16],
     logs: Vec<LogEntry>
 }
 
 impl Computer {
 
-    fn mem(len: usize) -> Vec<Rc<RefCell<MemoryCell>>> {
-        let mut result = Vec::<Rc<RefCell<MemoryCell>>>::new();
+    fn mem(len: usize) -> Vec<MemoryCell> {
+        let mut result = Vec::<MemoryCell>::new();
 
         for _ in 0..len {
-            result.push(Rc::new(RefCell::new(MemoryCell::new())))
+            result.push(MemoryCell::new())
         }
 
         result
@@ -270,7 +272,7 @@ impl Computer {
             let address = u16::from_str_radix(splitted.get(0).unwrap(), 16).unwrap();
             let value = u16::from_str_radix(splitted.get(1).unwrap(), 16).unwrap();
 
-            self.mc_memory.borrow_mut().data.get_mut(address as usize).unwrap().borrow_mut().set(value);
+            self.mc_memory.borrow_mut().data.get_mut(address as usize).unwrap().set(value);
         }
 
     }
@@ -281,11 +283,13 @@ impl Computer {
             registers: Registers::new(),
             general_memory: Rc::new(RefCell::new(Memory {
                 data: Self::mem(2048),
-                parser: GeneralParser::new()
+                parser: GeneralParser::new(),
+                phantom: PhantomData::default()
             })),
             mc_memory: Rc::new(RefCell::new(Memory {
                 data: Self::mem(256),
-                parser: McParser::new()
+                parser: McParser::new(),
+                phantom: PhantomData::default()
             })),
             logs: Vec::<LogEntry>::new()
         };
@@ -295,6 +299,9 @@ impl Computer {
     }
 
     pub fn log(&mut self, micro_command: bool, info: String) {
+        if self.logs.len() > 100 {
+            self.logs.remove(0);
+        }
         self.logs.push(
             LogEntry {
                 micro_counter: self.registers.r_micro_command_counter,
@@ -310,7 +317,7 @@ impl Computer {
     }
 
     pub fn micro_step(&mut self) -> ExecutionResult {
-        let cmd = parse(self.mc_memory.borrow_mut().data.get(self.registers.r_micro_command_counter as usize).unwrap().borrow().get());
+        let cmd = parse(self.mc_memory.borrow_mut().data.get(self.registers.r_micro_command_counter as usize).unwrap().get());
         let result = cmd.run(self);
         if !matches!(result, ExecutionResult::JUMPED) {
             self.registers.r_micro_command_counter += 1;

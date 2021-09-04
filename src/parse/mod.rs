@@ -1,10 +1,16 @@
+use imgui::Ui;
 
 pub mod mc;
 pub mod general;
 
-pub trait Parser {
+pub trait CommandInfo {
+    fn mnemonic(&self) -> String;
+    fn draw_highlight(&self, ui: &Ui);
+}
 
-    fn parse(&self, opcode: u16) -> String;
+pub trait Parser<T: CommandInfo> {
+
+    fn parse(&self, opcode: u16) -> T;
 
     fn supports_rev_parse(&self) -> bool;
 

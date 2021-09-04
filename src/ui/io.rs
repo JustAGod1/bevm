@@ -60,6 +60,8 @@ impl Tool for IOTool {
             if state.computer.registers.get_allow_interupt() {
                 state.computer.registers.set_interrupt(true);
             }
+        } else {
+            state.computer.registers.set_interrupt(false);
         }
 
     }

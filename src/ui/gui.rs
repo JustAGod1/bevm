@@ -19,6 +19,8 @@ use crate::ui::layout::LayoutTool;
 use crate::ui::registers::RegistersTool;
 use crate::ui::status::StatusTool;
 use crate::ui::io::IOTool;
+use crate::parse::CommandInfo;
+use crate::ui::highlight::CommandHighlightTool;
 
 pub struct PopupManager {
     popup: Option<Box<dyn Popup>>,
@@ -56,6 +58,7 @@ impl PopupManager {
 pub struct GuiState {
     pub computer: Computer,
     pub popup_manager: PopupManager,
+    pub current_command: Option<Box<dyn CommandInfo>>,
 }
 
 impl GuiState {
@@ -63,6 +66,7 @@ impl GuiState {
         GuiState {
             computer,
             popup_manager: PopupManager::new(),
+            current_command: None,
         }
     }
 }
@@ -113,26 +117,34 @@ impl Gui {
                                     )
                                 )
                                 .append(
-                                    WindowTool::single_tool(
-                                        315, 0,
-                                        "Панель управления", LayoutTool::new_vertical("execandio")
-                                            .append(
-                                                WindowTool::single_tool(
-                                                    0, 135,
-                                                    "Управление исполнением",
-                                                    SmartControlsTool::new(),
-                                                )
+                                    LayoutTool::new_horizontal("middle")
+                                        .append(
+                                            WindowTool::single_tool(
+                                                315, 0,
+                                                "Панель управления", LayoutTool::new_vertical("execandio")
+                                                    .append(
+                                                        WindowTool::single_tool(
+                                                            0, 135,
+                                                            "Управление исполнением",
+                                                            SmartControlsTool::new(),
+                                                        )
+                                                    )
+                                                    .append(
+                                                        WindowTool::single_tool(
+                                                            0, 0,
+                                                            "Внешние устройства",
+                                                            IOTool::new(),
+                                                        )
+                                                    )
                                             )
-                                            .append(
-                                                WindowTool::single_tool(
-                                                    0, 0,
-                                                    "Устройства Ввода/Вывода",
-                                                    IOTool::new(),
-                                                )
-
+                                        )
+                                        .append(
+                                            WindowTool::single_tool(
+                                                315, 0,
+                                                "Информация о команде",
+                                                CommandHighlightTool::new()
                                             )
-                                        ,
-                                    )
+                                        )
                                 )
                         )
                         .size(0, -210)
