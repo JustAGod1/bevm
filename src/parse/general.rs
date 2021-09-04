@@ -299,7 +299,7 @@ impl GeneralCommand for AddressCommand {
             ui.text("Тип: Адресная команда");
         }
         ui.text(format!("Мнемоника: {}", self.parse(opcode)));
-        ui.text(format!("Маска: {:X}", self.mask));
+        ui.text(format!("Маска: {:0>2X}", self.mask));
 
         let indirect = opcode.bitand(0x0800) != 0;
         let address = opcode.bitand(0x7FF);
