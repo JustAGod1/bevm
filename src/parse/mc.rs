@@ -76,7 +76,7 @@ impl Parser<MicroCommandInfo> for McParser {
         false
     }
 
-    fn rev_parse(&self, str: String) -> Result<u16, String> {
+    fn rev_parse(&self, str: &str) -> Result<u16, String> {
         panic!()
     }
 }

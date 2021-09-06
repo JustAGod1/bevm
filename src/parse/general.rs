@@ -103,7 +103,7 @@ impl Parser<GeneralCommandInfo> for GeneralParser {
         true
     }
 
-    fn rev_parse(&self, str: String) -> Result<u16, String> {
+    fn rev_parse(&self, str: &str) -> Result<u16, String> {
         let mnemonic = str.split(" ").next();
         if mnemonic.is_none() {
             return Err(format!("Пустая строка получается"))
@@ -115,7 +115,7 @@ impl Parser<GeneralCommandInfo> for GeneralParser {
             return Err(format!("Неизвестная мнемоника {}", mnemonic))
         }
 
-        command.unwrap().rev_parse(str.as_str())
+        command.unwrap().rev_parse(str)
 
     }
 }

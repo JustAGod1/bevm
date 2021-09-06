@@ -19,21 +19,29 @@ pub fn parse<T: Read, I: CommandInfo, P: Parser<I>>(
     data: &mut T,
     parser: &P,
     max_size: u16,
-) -> Result<HashMap<u16, u16>, ParserError> {
+) -> Result<Vec<(u16, u16)>, ParserError> {
     let mut reader = BufReader::new(data);
     let mut cursor = 0;
 
     let mut line_buf = String::with_capacity(128);
 
+    let mut variables = HashMap::<String, u16>::new();
+    let mut pre_result = Vec::<(u16, String, u16)>::new();
+
+    let mut line_num = 0;
 
     loop {
+        line_num += 1;
         match reader.read_line(&mut line_buf) {
-            Ok(v) => (),
-            Err(err) => { return Err(ParserError::IOError(err)); }
+            Ok(v) => if v == 0 { break; } else { () },
+            Err(err) => {
+                return Err(ParserError::IOError(err));
+            }
         }
 
+        let line = line_buf.to_string();
 
-        let parsed = parse_line(line_buf.as_str());
+        let parsed = parse_line(line.as_str());
 
         if parsed.is_none() {
             continue;
@@ -43,9 +51,10 @@ pub fn parse<T: Read, I: CommandInfo, P: Parser<I>>(
 
         macro_rules! err {
             ($msg:expr) => {
-                format!("Ошибка в строке {}. Номер строки: {}. Сообщение: {}", line_buf, cursor, $msg)
+                format!("Ошибка в строке {}. Номер строки: {}. Сообщение: {}", line_buf, line_num, $msg)
             };
         }
+
 
         match parsed {
             DataLine::Operator(name, arg) => {
@@ -59,20 +68,89 @@ pub fn parse<T: Read, I: CommandInfo, P: Parser<I>>(
                 };
 
                 if pos < cursor {
-                    return Err(ParserError::SemanticError(err!(format!("Явно указанная позиция курсора меньше текущей позиции курсора. Текущая {:X}. Укзаная {:X}.", cursor, pos))))
+                    return Err(ParserError::SemanticError(err!(format!("Явно указанная позиция курсора меньше текущей позиции курсора. Текущая {:X}. Укзаная {:X}.", cursor, pos))));
                 }
 
                 if pos > max_size {
-                    return Err(ParserError::SemanticError(err!(format!("Явно указанная позиция курсора больше максимально допустимой. Максимальная {:X}. Укзаная {:X}.", max_size, pos))))
+                    return Err(ParserError::SemanticError(err!(format!("Явно указанная позиция курсора больше максимально допустимой. Максимальная {:X}. Укзаная {:X}.", max_size, pos))));
                 }
 
                 cursor = pos
             }
             DataLine::Command(command, name) => {
+                pre_result.push((cursor, command.to_string(), line_num));
+
+                if let Some(name) = name {
+                    variables.insert(name.to_string(), cursor);
+                }
+
+                cursor += 1;
+
+                if cursor > max_size {
+                    return Err(ParserError::SemanticError(err!(format!("Превышена максимальная позиция. Максимальная {:X}.", max_size))));
+                }
+            }
+        }
+    };
+
+    let mut result = Vec::<(u16, u16)>::new();
+
+    for (pos, cmd, line) in pre_result {
+        let mut builder = String::new();
+        let mut name = String::new();
+
+        let mut var = false;
+
+        for x in cmd.chars() {
+            if (x == ' ' || x == '%') && var {
+                if !variables.contains_key(name.as_str()) {
+                    return Err(ParserError::SemanticError(format!("Ошибка в строке {}. Не могу найти переменную {}.", line, name)));
+                }
+                builder.push_str(format!("{:X}", variables.get(name.as_str()).unwrap()).as_str());
+                if x != '%' {
+                    builder.push(x);
+                    var = false;
+                }
+                name = String::new();
+            } else if x == '%' {
+                var = true
+            } else {
+                if var {
+                    name.push(x)
+                } else {
+                    builder.push(x)
+
+                }
 
             }
         }
+
+        if var {
+            if !variables.contains_key(name.as_str()) {
+                return Err(ParserError::SemanticError(format!("Ошибка в строке {}. Не могу найти переменную {}.", line, name)));
+            }
+            builder.push_str(format!("{:X}", variables.get(name.as_str()).unwrap()).as_str());
+        }
+
+        if let Ok(parsed) = u16::from_str_radix(builder.as_str(), 16) {
+            result.push((pos, parsed))
+        } else {
+            if !parser.supports_rev_parse() {
+                return Err(ParserError::SemanticError(format!("Ошибка в строке {}. Не могу распарсить число {}.", line, builder)));
+            }
+
+            let r = parser.rev_parse(builder.as_str());
+
+            match r {
+                Ok(v) => result.push((pos, v)),
+                Err(e) => return Err(ParserError::SemanticError(format!("Ошибка в строке {}. Не могу распарсить выражение {}. Ошибка: {}", line, builder, e)))
+            }
+        }
+
     }
+
+
+    Ok(result)
 }
 
 enum DataLine<'a> {
@@ -80,6 +158,7 @@ enum DataLine<'a> {
     Command(&'a str, Option<&'a str>),
 }
 
+// Да я притащил либу для парсинга простой хуйни
 fn parse_line(line: &str) -> Option<DataLine> {
     let line = line.find_substring("#").map_or(line, |p| { &line[0..p] }).trim();
 

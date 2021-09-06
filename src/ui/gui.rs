@@ -193,14 +193,25 @@ impl Gui {
         let mut last_frame = Instant::now();
 
 
-        loop {
+        'outer: loop {
             use sdl2::event::Event;
             use sdl2::keyboard::Keycode;
 
             for event in event_pump.poll_iter() {
-                if matches!(event, Event::AppTerminating {..}) {
-                    break;
+                match &event {
+                    Event::Quit {..} => {
+                        println!("Terminating");
+                        break 'outer;
+                    }
+                    Event::DropFile {filename, ..} => {
+                        if self.state.popup_manager.popup.is_some() {
+                            self.state.popup_manager.popup.as_mut().unwrap().on_file_dropped(filename.as_str())
+                        }
+                    }
+                    _ => {}
+
                 }
+
                 imgui_sdl2.handle_event(&mut imgui, &event);
                 if imgui_sdl2.ignore_event(&event) { continue; }
             }
