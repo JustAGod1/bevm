@@ -1,6 +1,5 @@
 use crate::model::{Computer, Register};
 use imgui::{Ui, ChildWindow, TreeNode, im_str, ImString};
-use image::flat::Error::TooLarge;
 use crate::parse::mc::ExecutionResult;
 use crate::ui::gui::{PopupManager, Gui, GuiState};
 use crate::ui::popup::PopupHalted;

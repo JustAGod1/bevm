@@ -341,13 +341,13 @@ impl CommandInfo for GeneralCommandInfo {
 mod tests {
     use core::ops::*;
     use crate::parse::general::GeneralParser;
-    use crate::parse::Parser;
+    use crate::parse::{Parser, CommandInfo};
 
     #[test]
     fn test() {
         let parser = GeneralParser::new();
 
-        assert_eq!(parser.parse(0xF700), "ROR");
-        assert_eq!(parser.parse(0x3024), "MOV 024");
+        assert_eq!(parser.parse(0xF700).mnemonic(), "ROR");
+        assert_eq!(parser.parse(0x3024).mnemonic(), "MOV 024");
     }
 }

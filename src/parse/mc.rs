@@ -653,6 +653,7 @@ impl OperationalCommand0 {
 #[cfg(test)]
 mod tests {
     use core::ops::*;
+    use crate::bit_at;
 
     #[test]
     fn sub_sum() {

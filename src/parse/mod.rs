@@ -2,6 +2,7 @@ use imgui::Ui;
 
 pub mod mc;
 pub mod general;
+pub mod file;
 
 pub trait CommandInfo {
     fn mnemonic(&self) -> String;
