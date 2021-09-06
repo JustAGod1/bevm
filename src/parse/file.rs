@@ -33,35 +33,37 @@ pub fn parse<T: Read, I: CommandInfo, P: Parser<I>>(
         }
 
 
-        let line = parse_line(line_buf.as_str());
+        let parsed = parse_line(line_buf.as_str());
 
-        if line.is_none() {
+        if parsed.is_none() {
             continue;
         }
 
-        let line = line.unwrap();
+        let parsed = parsed.unwrap();
 
-        fn err<S: Into<String>>(msg: S) -> String {
-            format!("Ошибка в строке {}. Номер строки: {}. Сообщение: {}", line, cursor, msg.into())
+        macro_rules! err {
+            ($msg:expr) => {
+                format!("Ошибка в строке {}. Номер строки: {}. Сообщение: {}", line_buf, cursor, $msg)
+            };
         }
 
-        match line {
+        match parsed {
             DataLine::Operator(name, arg) => {
                 if name.eq_ignore_ascii_case("Pos") {
-                    return Err(ParserError::SemanticError(err(format!("Неизвестный оператор {}", name))));
+                    return Err(ParserError::SemanticError(err!(format!("Неизвестный оператор {}", name))));
                 }
 
                 let pos = match u16::from_str_radix(arg, 16) {
-                    Err(_) => return Err(ParserError::SemanticError(err(format!("Не могу распарсить число {}", arg)))),
+                    Err(_) => return Err(ParserError::SemanticError(err!(format!("Не могу распарсить число {}", arg)))),
                     Ok(v) => v
                 };
 
                 if pos < cursor {
-                    return Err(ParserError::SemanticError(err(format!("Явно указанная позиция курсора меньше текущей позиции курсора. Текущая {:X}. Укзаная {:X}.", cursor, pos))))
+                    return Err(ParserError::SemanticError(err!(format!("Явно указанная позиция курсора меньше текущей позиции курсора. Текущая {:X}. Укзаная {:X}.", cursor, pos))))
                 }
 
                 if pos > max_size {
-                    return Err(ParserError::SemanticError(err(format!("Явно указанная позиция курсора больше максимально допустимой. Максимальная {:X}. Укзаная {:X}.", max_size, pos))))
+                    return Err(ParserError::SemanticError(err!(format!("Явно указанная позиция курсора больше максимально допустимой. Максимальная {:X}. Укзаная {:X}.", max_size, pos))))
                 }
 
                 cursor = pos
