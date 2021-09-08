@@ -630,14 +630,14 @@ impl OperationalCommand0 {
         let left = self.left_input()
             .map(
                 |r| if complement == Complement::Left
-                { format!("-{}", r.mnemonic()) } else { r.mnemonic() }
+                { format!("!{}", r.mnemonic()) } else { r.mnemonic() }
             )
             .unwrap_or("0".to_string());
 
         let right = self.right_input()
             .map(
                 |r| if complement == Complement::Right
-                { format!("-{}", r.mnemonic()) } else { r.mnemonic() }
+                { format!("!{}", r.mnemonic()) } else { r.mnemonic() }
             )
             .unwrap_or("0".to_string());
 

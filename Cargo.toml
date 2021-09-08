@@ -9,7 +9,7 @@ build = "build.rs"
 [dependencies]
 imgui = "0.7.0"
 nom = "7.0.0"
-
+path-clean = "0.1.0"
 sdl2 = { version = "0.34", features = ["bundled"] }
 gl = "0.10.0"
 imgui-sdl2 = "0.14.0"

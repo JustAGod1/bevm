@@ -7,7 +7,7 @@ use crate::ui::gui::{PopupManager, Gui, GuiState};
 use std::rc::Rc;
 use std::cell::RefCell;
 use imgui::__core::cell::RefMut;
-use crate::ui::popup::{PopupParseError, PopupChoosingFile};
+use crate::ui::popup::{PopupParseError};
 
 
 #[derive(PartialEq, Eq)]
@@ -78,7 +78,6 @@ impl <I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16>Tool for CellsTool<I
     fn draw(&mut self, ui: &Ui, state: &mut GuiState) {
         let mut idx = 0u32;
 
-        self.draw_load_from_file(ui, state);
         self.draw_representation_selection(ui);
 
         let jump_needed = ui.button(im_str!("Перейти к исполняемой команде"), [0.0, 0.0]);
@@ -178,23 +177,6 @@ impl <I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> 
     }
 
     fn load_from_file(&mut self, file: String) {
-
-    }
-
-    fn draw_load_from_file(&mut self, ui: &Ui, state: &mut GuiState) {
-        let token = ui.begin_menu_bar();
-        if token.is_none() { return; }
-        let token = token.unwrap();
-
-        if let Some(token) = ui.begin_menu(im_str!("Загрузить"), true) {
-            if MenuItem::new(im_str!("Из файла")).build(ui) {
-                state.popup_manager.open(PopupChoosingFile::new(|s| self.load_from_file(s)))
-            }
-            token.end(ui)
-        }
-
-
-        token.end(ui);
 
     }
 

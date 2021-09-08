@@ -9,17 +9,13 @@ use nom::character::is_space;
 use nom::{IResult, Finish, FindSubstring};
 use nom::branch::alt;
 
-pub enum ParserError {
-    SemanticError(String),
-    IOError(Error),
-}
 
 
-pub fn parse<T: Read, I: CommandInfo, P: Parser<I>>(
+pub fn parse_file<T: Read, I: CommandInfo, P: Parser<I>>(
     data: &mut T,
     parser: &P,
     max_size: u16,
-) -> Result<Vec<(u16, u16)>, ParserError> {
+) -> Result<Vec<(u16, u16)>, String> {
     let mut reader = BufReader::new(data);
     let mut cursor = 0;
 
@@ -32,10 +28,11 @@ pub fn parse<T: Read, I: CommandInfo, P: Parser<I>>(
 
     loop {
         line_num += 1;
+        line_buf.clear();
         match reader.read_line(&mut line_buf) {
             Ok(v) => if v == 0 { break; } else { () },
             Err(err) => {
-                return Err(ParserError::IOError(err));
+                return Err(err.to_string());
             }
         }
 
@@ -58,21 +55,21 @@ pub fn parse<T: Read, I: CommandInfo, P: Parser<I>>(
 
         match parsed {
             DataLine::Operator(name, arg) => {
-                if name.eq_ignore_ascii_case("Pos") {
-                    return Err(ParserError::SemanticError(err!(format!("Неизвестный оператор {}", name))));
+                if name != "pos" {
+                    return Err(err!(format!("Неизвестный оператор {}", name)));
                 }
 
                 let pos = match u16::from_str_radix(arg, 16) {
-                    Err(_) => return Err(ParserError::SemanticError(err!(format!("Не могу распарсить число {}", arg)))),
+                    Err(_) => return Err(err!(format!("Не могу распарсить число {}", arg))),
                     Ok(v) => v
                 };
 
                 if pos < cursor {
-                    return Err(ParserError::SemanticError(err!(format!("Явно указанная позиция курсора меньше текущей позиции курсора. Текущая {:X}. Укзаная {:X}.", cursor, pos))));
+                    return Err(err!(format!("Явно указанная позиция курсора меньше текущей позиции курсора. Текущая {:X}. Укзаная {:X}.", cursor, pos)));
                 }
 
                 if pos > max_size {
-                    return Err(ParserError::SemanticError(err!(format!("Явно указанная позиция курсора больше максимально допустимой. Максимальная {:X}. Укзаная {:X}.", max_size, pos))));
+                    return Err(err!(format!("Явно указанная позиция курсора больше максимально допустимой. Максимальная {:X}. Укзаная {:X}.", max_size, pos)));
                 }
 
                 cursor = pos
@@ -87,7 +84,7 @@ pub fn parse<T: Read, I: CommandInfo, P: Parser<I>>(
                 cursor += 1;
 
                 if cursor > max_size {
-                    return Err(ParserError::SemanticError(err!(format!("Превышена максимальная позиция. Максимальная {:X}.", max_size))));
+                    return Err(err!(format!("Превышена максимальная позиция. Максимальная {:X}.", max_size)));
                 }
             }
         }
@@ -104,7 +101,7 @@ pub fn parse<T: Read, I: CommandInfo, P: Parser<I>>(
         for x in cmd.chars() {
             if (x == ' ' || x == '%') && var {
                 if !variables.contains_key(name.as_str()) {
-                    return Err(ParserError::SemanticError(format!("Ошибка в строке {}. Не могу найти переменную {}.", line, name)));
+                    return Err(format!("Ошибка в строке {}. Не могу найти переменную {}.", line, name));
                 }
                 builder.push_str(format!("{:X}", variables.get(name.as_str()).unwrap()).as_str());
                 if x != '%' {
@@ -127,23 +124,23 @@ pub fn parse<T: Read, I: CommandInfo, P: Parser<I>>(
 
         if var {
             if !variables.contains_key(name.as_str()) {
-                return Err(ParserError::SemanticError(format!("Ошибка в строке {}. Не могу найти переменную {}.", line, name)));
+                return Err(format!("Ошибка в строке {}. Не могу найти переменную {}.", line, name));
             }
             builder.push_str(format!("{:X}", variables.get(name.as_str()).unwrap()).as_str());
         }
 
-        if let Ok(parsed) = u16::from_str_radix(builder.as_str(), 16) {
+        if let Ok(parsed) = u16::from_str_radix(builder.as_str().trim(), 16) {
             result.push((pos, parsed))
         } else {
             if !parser.supports_rev_parse() {
-                return Err(ParserError::SemanticError(format!("Ошибка в строке {}. Не могу распарсить число {}.", line, builder)));
+                return Err(format!("Ошибка в строке {}. Не могу распарсить число {}.", line, builder));
             }
 
             let r = parser.rev_parse(builder.as_str());
 
             match r {
                 Ok(v) => result.push((pos, v)),
-                Err(e) => return Err(ParserError::SemanticError(format!("Ошибка в строке {}. Не могу распарсить выражение {}. Ошибка: {}", line, builder, e)))
+                Err(e) => return Err(format!("Ошибка в строке {}. Не могу распарсить выражение {}. Ошибка: {}", line, builder, e))
             }
         }
 
@@ -198,13 +195,13 @@ fn parse_line(line: &str) -> Option<DataLine> {
     }
 
     if let Some((name, arg)) = operand_line(line) {
-        return Some(DataLine::Operator(name, arg));
+        return Some(DataLine::Operator(name.trim(), arg.trim()));
     }
 
     let (cmd, operand) = command_line(line);
 
 
-    Some(DataLine::Command(cmd, operand))
+    Some(DataLine::Command(cmd.trim(), operand.map(|s| s.trim())))
 }
 
 

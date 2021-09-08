@@ -68,18 +68,22 @@ impl WindowTool {
         Self::new(
             tool_name.to_string(),
             width, height,
-            vec![(tool_name, Box::new(tool))]
-        )
+        ).append(tool_name, tool)
     }
 
-    pub fn new<S: Into<String>>(id: S, width: i32, height: i32, tools: Vec<(&'static str, Box<dyn Tool>)>) -> WindowTool {
-        assert!(!tools.is_empty(), "Expected at least one tool");
+    pub fn append(mut self, name: &'static str, tool: impl Tool + 'static) -> WindowTool {
+        self.tools.push((name, Box::new(tool)));
+        self
+    }
+
+
+    pub fn new<S: Into<String>>(id: S, width: i32, height: i32) -> WindowTool {
         WindowTool {
             id: id.into(),
             width: width as f32,
             height: height as f32,
             tool_selector: 0,
-            tools,
+            tools: vec![],
             vertical_scroll: false,
         }
     }

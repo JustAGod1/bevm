@@ -1,107 +1,50 @@
 use crate::model::Computer;
 use imgui::{Ui, ImString, im_str, ItemFlag, StyleVar};
+use crate::ui::gui::{GuiState, PopupManager};
 
 pub trait Popup {
 
     fn name(&self) -> ImString;
 
-    fn draw(&mut self, ui: &Ui, computer: &mut Computer) -> bool;
+    fn draw(&mut self, ui: &Ui, state: &mut GuiState) -> bool;
 
     fn on_file_dropped(&mut self, filename: &str) {}
 }
 
 
-pub struct PopupChoosingFile<F>
-    where F: Fn(String)
-{
-    callback: F,
-    chosen_file: Option<String>
+pub struct PopupMessage {
+    title: String,
+    msg: String
 }
-
-impl <F>PopupChoosingFile<F>
-    where F: Fn(String)
-{
-
-    pub fn new(callback: F) -> PopupChoosingFile<F>
-    {
-        PopupChoosingFile {
-            callback,
-            chosen_file: None
+impl PopupMessage {
+    pub fn new<S: Into<String>, T: Into<String>>(title: T, msg: S) -> PopupMessage {
+        PopupMessage {
+            title: title.into(),
+            msg: msg.into()
         }
     }
+
 }
 
-impl <F>Popup for PopupChoosingFile<F>
-    where F: Fn(String)
-{
+impl Popup for PopupMessage {
     fn name(&self) -> ImString {
-        ImString::new("Выбор файла")
+        ImString::new(self.title.as_str())
     }
 
-    fn draw(&mut self, ui: &Ui, computer: &mut Computer) -> bool {
+    fn draw(&mut self, ui: &Ui, state: &mut GuiState) -> bool {
         let mut open = true;
         let name = self.name();
         let popup = ui.popup_modal(name.as_ref())
             .opened(&mut open)
             .always_auto_resize(true);
 
-        let mut open  = true;
 
         popup.build(|| {
-            ui.text("Перетащите файл сюда");
-            match &self.chosen_file {
-                Some(f) => {
-                    ui.text(format!("Файл: {}", f));
-
-                    if ui.button(im_str!("Подтвердить"), [100.0, 0.0]) {
-                        (self.callback)(f.to_string());
-                        ui.close_current_popup();
-                        open = false
-                    }
-                },
-                None => {
-                    ui.text(format!("Файл: Не выбран"));
-                    if ui.button(im_str!("Отменить"), [100.0, 0.0]) {
-                        ui.close_current_popup();
-                        open = false
-                    }
-                },
-            }
-
+            ui.text(self.msg.as_str())
         });
 
         return open
-    }
 
-    fn on_file_dropped(&mut self, filename: &str) {
-        self.chosen_file = Some(filename.to_string())
-    }
-}
-
-pub struct PopupHalted;
-impl PopupHalted {
-    pub fn new() -> PopupHalted {
-        PopupHalted{}
-    }
-
-}
-impl Popup for PopupHalted {
-
-
-    fn name(&self) -> ImString { ImString::from("Остановочка".to_string()) }
-
-    fn draw(&mut self, ui: &Ui, computer: &mut Computer) -> bool{
-        let mut open = true;
-        let popup = ui.popup_modal(im_str!("Остановочка"))
-            .opened(&mut open)
-            .always_auto_resize(true);
-
-
-        popup.build(|| {
-                ui.text("ЭВМ завершила свою работу")
-            });
-
-        return open
     }
 }
 
@@ -123,7 +66,7 @@ impl Popup for PopupParseError {
 
     fn name(&self) -> ImString { ImString::from("Ошибка разбора".to_string()) }
 
-    fn draw(&mut self, ui: &Ui, computer: &mut Computer) -> bool{
+    fn draw(&mut self, ui: &Ui, state: &mut GuiState) -> bool{
         let mut open = true;
         let name = self.name();
         let popup = ui.popup_modal(name.as_ref())

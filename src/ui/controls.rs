@@ -2,8 +2,8 @@ use crate::model::{Computer, Register};
 use imgui::{Ui, ChildWindow, TreeNode, im_str, ImString};
 use crate::parse::mc::ExecutionResult;
 use crate::ui::gui::{PopupManager, Gui, GuiState};
-use crate::ui::popup::PopupHalted;
 use crate::ui::window::Tool;
+use crate::ui::popup::PopupMessage;
 
 pub struct SmartControlsTool {
     auto_run: bool
@@ -75,7 +75,7 @@ impl SmartControlsTool {
             for _ in 0..100 {
                 if matches!(computer.micro_step(), ExecutionResult::HALTED) {
                     if computer.registers.get_lever() {
-                        state.popup_manager.open(PopupHalted::new());
+                        state.popup_manager.open(PopupMessage::new("Остановочка","ЭВМ завершила свою работу"));
                     }
                     computer.registers.set_lever(false);
                     self.auto_run = false;

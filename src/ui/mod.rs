@@ -13,6 +13,8 @@ mod registers;
 mod status;
 mod io;
 mod highlight;
+mod load_from_file;
+mod help;
 
 pub fn relative_width(width: f32, ui: &Ui) -> f32 {
     if width >= 0.0 { return width; }

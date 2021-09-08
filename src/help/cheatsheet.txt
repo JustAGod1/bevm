@@ -1,0 +1,32 @@
+1.  ADD M    1XXX    A = A & *M
+2.  MOV M    3XXX    *M = A
+3.  ADD M    4XXX    A = A + *M
+4.  ADC M    5XXX    A = *M + A + C
+5.  SUB M    6XXX    A = A - *M
+
+6.  BCS M    8XXX    if (C == 1) CK = M
+7.  BPL M    9XXX    if (A >= 0) CK = M
+8.  BMI M    AXXX    if (A < 0)  CK = M
+9.  BEQ M    BXXX    if (A == 0) CK = M
+10. BR M     CXXX    CK = M
+11. ISZ M    0XXX    *M = *M + 1; if (*M > 0) CK++
+12. JSR M    2XXX    *M = CK; CK = M+1
+
+13. CLA      F200    A = 0
+14. CLC      F300    C = 0
+15. CMA      F400    A = !A
+16. CMC      F500    C = !C
+17. ROL      F600    A = A << 1;
+18. ROR      F700    A = A >> 1;
+19. INC      F800    A++
+20. DEC      F900    A--
+
+21. HLT      F000    Остановочка
+22. NOP      F100    Не делает ничего
+23. EI       FA00    Разрешает прерывания
+24. DI       FB00    Запрещает прерывания
+        
+25. CLF B    E0XX    Очищает флаг готовоности ВУ В
+25. TSF B    E1XX    if (ВУ В готов) СК++
+26. IN B     E2XX    Переносит из А в ВУ В
+26. OUT B    E3XX    Переносит из ВУ В в А

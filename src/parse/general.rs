@@ -167,7 +167,9 @@ impl GeneralCommand for SimpleCommand {
     }
 
     fn rev_parse(&self, s: &str) -> Result<u16, String> {
-        if s.trim() != self.name { panic!() }
+        if s.trim() != self.name {
+            return Err(format!("{} является безадресной командой и не принимает аргументов", self.name))
+        }
         Ok(self.mask)
     }
 

@@ -21,34 +21,20 @@ use crate::ui::status::StatusTool;
 use crate::ui::io::IOTool;
 use crate::parse::CommandInfo;
 use crate::ui::highlight::CommandHighlightTool;
+use crate::ui::load_from_file::LoadFromFileTool;
+use crate::ui::help::HelpTool;
 
 pub struct PopupManager {
-    popup: Option<Box<dyn Popup>>,
     popup_delayed: Vec<Box<dyn Popup>>,
 }
 
 impl PopupManager {
     fn new() -> PopupManager {
         PopupManager {
-            popup: None,
             popup_delayed: Vec::<Box<dyn Popup>>::new(),
         }
     }
 
-    fn do_open_and_draw(&mut self, ui: &Ui, computer: &mut Computer) {
-        if self.popup.is_some() {
-            if !self.popup.as_mut().unwrap().draw(ui, computer) {
-                self.popup = None;
-            }
-            return;
-        }
-        if !self.popup_delayed.is_empty() {
-            let popup = self.popup_delayed.pop().unwrap();
-            ui.open_popup(popup.name().as_ref());
-
-            self.popup = Some(popup);
-        }
-    }
 
     pub fn open<P>(&mut self, popup: P) where P: Popup, P: 'static {
         self.popup_delayed.push(Box::new(popup));
@@ -56,6 +42,8 @@ impl PopupManager {
 }
 
 pub struct GuiState {
+    pub last_file_general: Option<String>,
+    pub last_file_mc: Option<String>,
     pub computer: Computer,
     pub popup_manager: PopupManager,
     pub current_command: Option<Box<dyn CommandInfo>>,
@@ -64,6 +52,8 @@ pub struct GuiState {
 impl GuiState {
     pub fn new(computer: Computer) -> GuiState {
         GuiState {
+            last_file_general: None,
+            last_file_mc: None,
             computer,
             popup_manager: PopupManager::new(),
             current_command: None,
@@ -72,6 +62,7 @@ impl GuiState {
 }
 
 pub struct Gui {
+    popup: Option<Box<dyn Popup>>,
     content: LayoutTool,
     state: GuiState,
 }
@@ -79,6 +70,7 @@ pub struct Gui {
 impl Gui {
     pub fn new(computer: Computer) -> Gui {
         return Gui {
+            popup: None,
             content:
             LayoutTool::new_vertical("root")
                 .append(
@@ -86,12 +78,10 @@ impl Gui {
                         .append(
                             WindowTool::new(
                                 "mem",
-                                500, 0,
-                                vec![
-                                    ("Основная память", Box::new(CellsTool::new((&computer.general_memory).clone(), |c| c.registers.r_command_counter))),
-                                    ("Память МПУ", Box::new(CellsTool::new((&computer.mc_memory).clone(), |c| c.registers.r_micro_command_counter as u16))),
-                                ],
+                                500, 0
                             )
+                                .append("Основная память", CellsTool::new((&computer.general_memory).clone(), |c| c.registers.r_command_counter))
+                                .append("Память МПУ", CellsTool::new((&computer.mc_memory).clone(), |c| c.registers.r_micro_command_counter as u16))
                         )
                         .append(
                             LayoutTool::new_vertical("right")
@@ -135,15 +125,33 @@ impl Gui {
                                                             "Внешние устройства",
                                                             IOTool::new(),
                                                         )
-                                                    )
+                                                    ),
                                             )
                                         )
                                         .append(
-                                            WindowTool::single_tool(
-                                                315, 0,
-                                                "Информация о команде",
-                                                CommandHighlightTool::new()
-                                            )
+                                            LayoutTool::new_vertical("infoandload")
+                                                .append(
+                                                    WindowTool::single_tool(
+                                                        0, -240,
+                                                        "Информация о команде",
+                                                        CommandHighlightTool::new(),
+                                                    )
+                                                )
+                                                .append(
+                                                    WindowTool::single_tool(
+                                                        0, 0,
+                                                        "Загрузить из файла",
+                                                        LoadFromFileTool::new(),
+                                                    )
+                                                )
+                                                .size(315, 0)
+                                        )
+                                        .append(
+                                            WindowTool::new("help", 0, 0)
+                                                .append("Прелюдия", HelpTool::new(include_str!("../help/prelude.txt")))
+                                                .append("Синтаксис", HelpTool::new(include_str!("../help/file.txt")))
+                                                .append("Шпора", HelpTool::new(include_str!("../help/cheatsheet.txt")))
+                                                .append("Нотация", HelpTool::new(include_str!("../help/notation.txt")))
                                         )
                                 )
                         )
@@ -158,6 +166,20 @@ impl Gui {
         };
     }
 
+    fn do_open_and_draw(&mut self, ui: &Ui) {
+        if self.popup.is_some() {
+            if !self.popup.as_mut().unwrap().draw(ui, &mut self.state) {
+                self.popup = None;
+            }
+            return;
+        }
+        if !self.state.popup_manager.popup_delayed.is_empty() {
+            let popup = self.state.popup_manager.popup_delayed.pop().unwrap();
+            ui.open_popup(popup.name().as_ref());
+
+            self.popup = Some(popup);
+        }
+    }
 
     pub fn run(&mut self) {
         let sdl_context = sdl2::init().unwrap();
@@ -199,17 +221,16 @@ impl Gui {
 
             for event in event_pump.poll_iter() {
                 match &event {
-                    Event::Quit {..} => {
+                    Event::Quit { .. } => {
                         println!("Terminating");
                         break 'outer;
                     }
-                    Event::DropFile {filename, ..} => {
-                        if self.state.popup_manager.popup.is_some() {
-                            self.state.popup_manager.popup.as_mut().unwrap().on_file_dropped(filename.as_str())
+                    Event::DropFile { filename, .. } => {
+                        if self.popup.is_some() {
+                            self.popup.as_mut().unwrap().on_file_dropped(filename.as_str())
                         }
                     }
                     _ => {}
-
                 }
 
                 imgui_sdl2.handle_event(&mut imgui, &event);
@@ -230,7 +251,7 @@ impl Gui {
             let token = ui.push_font(font);
 
             let closed = !self.draw_ui(&ui, &mut window);
-            self.state.popup_manager.do_open_and_draw(&ui, &mut self.state.computer);
+            self.do_open_and_draw(&ui);
 
             token.pop(&ui);
 
