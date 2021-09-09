@@ -191,7 +191,7 @@ impl Gui {
             gl_attr.set_context_version(3, 0);
         }
 
-        let mut window = video.window("BasePC 2.0", 1000, 1000)
+        let mut window = video.window("BasePC 2.0", 1500, 1000)
             .position_centered()
             .resizable()
             .opengl()

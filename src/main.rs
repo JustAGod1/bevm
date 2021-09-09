@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
