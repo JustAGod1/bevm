@@ -1,6 +1,14 @@
-fn main() {
+use std::io;
 
-    std::env::set_var("RUST_FLAGS", "-C link-args=-Wl,-rpath,.");
-    println!("cargo:rustc-link-search=all=.");
-    println!("cargo:rustc-link-lib=dylib=SDL2");
+fn main() -> io::Result<()>{
+
+    #[cfg(windows)] {
+        use winres::WindowsResource;
+        WindowsResource::new()
+            // This path can be absolute, or relative to your crate root.
+            .set_icon("ussr.ico")
+            .compile()?;
+    }
+    Ok(())
+
 }
