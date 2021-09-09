@@ -1,28 +1,33 @@
-extern crate sdl2;
-extern crate imgui;
-extern crate imgui_sdl2;
 extern crate gl;
+extern crate imgui;
 extern crate imgui_opengl_renderer;
+extern crate imgui_sdl2;
+extern crate sdl2;
 
 
-use sdl2::video::{Window as SDLWindow, WindowPos};
 use std::time::Instant;
-use imgui::{Window, Ui, im_str, Condition};
-use self::imgui::{WindowFlags, ImString, Id, ChildWindow, MenuItem, FontSource, Context, FontConfig, FontGlyphRanges, FontId, TreeNode, StyleColor};
-use crate::model::{Computer, Register, MemoryCell};
+
+use imgui::{Condition, im_str, Ui, Window};
+use sdl2::video::Window as SDLWindow;
+
+use crate::model::Computer;
+use crate::parse::CommandInfo;
 use crate::ui::cells::CellsTool;
-use crate::ui::log::LogTool;
 use crate::ui::controls::SmartControlsTool;
-use crate::ui::popup::Popup;
-use crate::ui::window::{WindowTool, Tool};
+use crate::ui::help::HelpTool;
+use crate::ui::highlight::CommandHighlightTool;
+use crate::ui::io::IOTool;
 use crate::ui::layout::LayoutTool;
+use crate::ui::load_from_file::LoadFromFileTool;
+use crate::ui::log::LogTool;
+use crate::ui::popup::Popup;
 use crate::ui::registers::RegistersTool;
 use crate::ui::status::StatusTool;
-use crate::ui::io::IOTool;
-use crate::parse::CommandInfo;
-use crate::ui::highlight::CommandHighlightTool;
-use crate::ui::load_from_file::LoadFromFileTool;
-use crate::ui::help::HelpTool;
+use crate::ui::window::{Tool, WindowTool};
+
+use self::imgui::{Context, FontConfig, FontGlyphRanges, FontId, FontSource, MenuItem, WindowFlags};
+use self::imgui::sys::ImGuiKey_Backspace;
+use self::sdl2::keyboard::Scancode;
 
 pub struct PopupManager {
     popup_delayed: Vec<Box<dyn Popup>>,
@@ -78,7 +83,7 @@ impl Gui {
                         .append(
                             WindowTool::new(
                                 "mem",
-                                500, 0
+                                500, 0,
                             )
                                 .append("Основная память", CellsTool::new((&computer.general_memory).clone(), |c| c.registers.r_command_counter))
                                 .append("Память МПУ", CellsTool::new((&computer.mc_memory).clone(), |c| c.registers.r_micro_command_counter as u16))
@@ -206,6 +211,8 @@ impl Gui {
         imgui.set_ini_filename(None);
         let font = self.init_font(&mut imgui);
 
+        imgui.io_mut().key_map[ImGuiKey_Backspace as usize] = Scancode::Backspace as u32;
+
         let mut imgui_sdl2 = imgui_sdl2::ImguiSdl2::new(&mut imgui, &window);
 
         let renderer = imgui_opengl_renderer::Renderer::new(&mut imgui, |s| video.gl_get_proc_address(s) as _);
@@ -214,12 +221,18 @@ impl Gui {
 
         let mut last_frame = Instant::now();
 
+        let mut i = 0usize;
 
         'outer: loop {
+            i += 1;
             use sdl2::event::Event;
             use sdl2::keyboard::Keycode;
 
             for event in event_pump.poll_iter() {
+                if event.is_keyboard() {}
+
+                imgui_sdl2.handle_event(&mut imgui, &event);
+
                 match &event {
                     Event::Quit { .. } => {
                         println!("Terminating");
@@ -230,13 +243,12 @@ impl Gui {
                             self.popup.as_mut().unwrap().on_file_dropped(filename.as_str())
                         }
                     }
+                    Event::KeyDown { scancode, .. } | Event::KeyUp { scancode, .. } => {
+                        break;
+                    }
                     _ => {}
                 }
-
-                imgui_sdl2.handle_event(&mut imgui, &event);
-                if imgui_sdl2.ignore_event(&event) { continue; }
             }
-
 
             imgui_sdl2.prepare_frame(imgui.io_mut(), &window, &event_pump.mouse_state());
 

@@ -1,4 +1,6 @@
 fn main() {
 
-    println!(r"cargo:rustc-link-search=C:\Users\JustAGod\CLionProjects\evm\library");
+    std::env::set_var("RUST_FLAGS", "-C link-args=-Wl,-rpath,.");
+    println!("cargo:rustc-link-search=all=.");
+    println!("cargo:rustc-link-lib=dylib=SDL2");
 }

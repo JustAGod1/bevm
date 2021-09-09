@@ -1,12 +1,5 @@
 #![windows_subsystem = "windows"]
-
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-
-use crate::model::{Computer, Memory};
-use std::cell::RefCell;
-use crate::parse::mc::McParser;
-use std::rc::Rc;
+use crate::model::Computer;
 
 mod ui;
 mod model;
@@ -24,7 +17,7 @@ macro_rules! bit_at {
 
 fn main() {
     println!("Hello, World!");
-    let mut computer = Computer::new();
+    let computer = Computer::new();
 
 
     ui::gui::Gui::new(computer).run();
