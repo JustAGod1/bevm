@@ -17,6 +17,7 @@ sdl2 = { version = "0.34", features = ["bundled"] }
 gl = "0.10.0"
 imgui-sdl2 = "0.14.0"
 imgui-opengl-renderer = "0.11.0"
+nfd = { git = "https://github.com/saurvs/nfd-rs.git" }
 
 
 [target.x86_64-pc-windows-msvc]

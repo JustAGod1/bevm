@@ -5,7 +5,7 @@ use crate::ui::window::Tool;
 use imgui::{Ui, im_str, ImString};
 use crate::ui::gui::{GuiState, PopupManager};
 use crate::ui::popup::{Popup, PopupMessage};
-use std::fs::{File, canonicalize, OpenOptions};
+use std::fs::{File, canonicalize, OpenOptions, read_to_string};
 use crate::parse::file::parse_file;
 use std::io::{BufReader, Write};
 use crate::parse::{CommandInfo, Parser};
@@ -21,11 +21,69 @@ impl LoadFromFileTool {
 
 impl Tool for LoadFromFileTool {
     fn draw(&mut self, ui: &Ui, state: &mut GuiState) {
+        fn load_file(state: &mut GuiState, general_memory: bool) {
+
+
+
+            let file_name= match nfd::open_file_dialog(Some("mm"), None) {
+                Ok(r) => match r {
+                    nfd::Response::Okay(f) => {
+                        f
+                    }
+                    _ => {return; }
+                }
+                Err(e) => {
+                    state.popup_manager.open(PopupMessage::new("Ошибка выбора файла", format!("Не могу открыть окно выбора файла: {}", e.to_string())));
+                    return;
+                }
+            };
+
+
+            let mut f = match File::open(file_name) {
+                Ok(mut f) => f,
+                Err(e) => {
+                    state.popup_manager.open(PopupMessage::new("Ошибка открытия файла", e.to_string()));
+                    return;
+                }
+            };
+
+            let parse_result = if general_memory {
+                crate::parse::file::parse_file(&mut f, &state.computer.general_memory.borrow().parser, 0x7FF)
+            } else {
+                crate::parse::file::parse_file(&mut f, &state.computer.mc_memory.borrow().parser, 0xFF)
+            };
+
+
+            if parse_result.is_err() {
+                let msg = parse_result.unwrap_err();
+                state.popup_manager.open(PopupMessage::new("Ошибка во время парсинга", msg));
+                return;
+            }
+
+            let parse_result = parse_result.unwrap();
+
+            fn apply<I: CommandInfo, P: Parser<I>>(mem: &mut Memory<I, P>, data: Vec<(u16, u16)>) {
+                for x in &mut mem.data {
+                    x.set(0)
+                }
+
+                for (pos, v) in data {
+                    mem.data.get_mut(pos as usize).unwrap().set(v);
+                }
+            }
+            if general_memory {
+                apply(&mut state.computer.general_memory.borrow_mut(), parse_result)
+            } else {
+                apply(&mut state.computer.mc_memory.borrow_mut(), parse_result)
+            }
+        }
+
+
         if ui.button(im_str!("Загрузить в основную память"), [300.0, 45.0]) {
-            state.popup_manager.open(PopupChoosingFile::new(true, state.last_file_general.clone()));
+            load_file(state, true);
         }
         if ui.button(im_str!("Загрузить в память МПУ"), [300.0, 45.0]) {
-            state.popup_manager.open(PopupChoosingFile::new(false, state.last_file_mc.clone()));
+            load_file(state, false);
         }
 
         fn report(state: &mut GuiState, file: &str, r: Result<(), String>) {
@@ -86,14 +144,33 @@ impl Tool for LoadFromFileTool {
 
         ui.separator();
 
-        if ui.button(im_str!("Сохранить основную память"), [300.0, 45.0]) {
-            let r = save("general.mm", &state.computer.general_memory.borrow());
+        fn choose_folder(state: &mut GuiState) -> Option<String> {
+            match nfd::open_pick_folder(None) {
+                Ok(r) => match r {
+                    nfd::Response::Okay(f) => {
+                        return Some(f)
+                    }
+                    _ => {}
+                }
+                Err(e) => state.popup_manager.open(PopupMessage::new("Ошибка выбора папки", format!("Не могу открыть окно выбора папки: {}", e.to_string())))
+            }
+            None
+        }
 
-            report(state, "general.mm", r);
+        if ui.button(im_str!("Сохранить основную память"), [300.0, 45.0]) {
+            if let Some(name) = choose_folder(state) {
+                let path = format!("{}/general.mm", name);
+                let r = save(path.as_str(), &state.computer.general_memory.borrow());
+                report(state, path.as_str(), r);
+
+            }
         }
         if ui.button(im_str!("Сохранить память МПУ"), [300.0, 45.0]) {
-            let r = save("mc.mm", &state.computer.mc_memory.borrow());
-            report(state, "mc.mm", r);
+            if let Some(name) = choose_folder(state) {
+                let path = format!("{}/mc.mm", name);
+                let r = save(path.as_str(), &state.computer.mc_memory.borrow());
+                report(state, path.as_str(), r);
+            }
         }
     }
 }
@@ -103,107 +180,4 @@ pub struct PopupChoosingFile
 {
     general_memory: bool,
     chosen_file: Option<String>,
-}
-
-impl PopupChoosingFile
-{
-    pub fn new(general_memory: bool, chosen_file: Option<String>) -> PopupChoosingFile
-    {
-        PopupChoosingFile {
-            general_memory,
-            chosen_file,
-        }
-    }
-}
-
-impl Popup for PopupChoosingFile
-{
-    fn name(&self) -> ImString {
-        ImString::new("Выбор файла")
-    }
-
-    fn draw(&mut self, ui: &Ui, state: &mut GuiState) -> bool {
-        let mut open = true;
-        let name = self.name();
-        let popup = ui.popup_modal(name.as_ref())
-            .opened(&mut open)
-            .always_auto_resize(true);
-
-
-        let mut open = false;
-
-        popup.build(|| {
-            open = true;
-            ui.text("Перетащите файл сюда");
-            match &self.chosen_file {
-                Some(f) => {
-                    ui.text(format!("Файл: {}", f));
-
-                    if ui.button(im_str!("Подтвердить"), [100.0, 0.0]) {
-                        if self.general_memory {
-                            state.last_file_general = Some(f.clone())
-                        } else {
-                            state.last_file_mc = Some(f.clone())
-                        };
-                        match File::open(f) {
-                            Ok(mut f) => self.parse_file(&mut f, state),
-                            Err(e) => state.popup_manager.open(PopupMessage::new("Ошибка открытия файла", e.to_string()))
-                        }
-
-                        ui.close_current_popup();
-                        open = false
-                    }
-                }
-                None => {
-                    ui.text(format!("Файл: Не выбран"));
-                    if ui.button(im_str!("Отменить"), [100.0, 0.0]) {
-                        ui.close_current_popup();
-                        open = false
-                    }
-                }
-            }
-        });
-
-        return open;
-    }
-
-    fn on_file_dropped(&mut self, filename: &str) {
-        self.chosen_file = Some(filename.to_string())
-    }
-}
-
-
-impl PopupChoosingFile {
-    fn parse_file(&self, f: &mut File, state: &mut GuiState) {
-        let parse_result = if self.general_memory {
-            parse_file(f, &state.computer.general_memory.borrow().parser, 0x7FF)
-        } else {
-            parse_file(f, &state.computer.mc_memory.borrow().parser, 0x7FF)
-        };
-
-
-        if parse_result.is_err() {
-            let msg = parse_result.unwrap_err();
-            state.popup_manager.open(PopupMessage::new("Ошибка во время парсинга", msg));
-            return;
-        }
-
-        let parse_result = parse_result.unwrap();
-
-        if self.general_memory {
-            Self::apply(&mut state.computer.general_memory.borrow_mut(), parse_result)
-        } else {
-            Self::apply(&mut state.computer.mc_memory.borrow_mut(), parse_result)
-        }
-    }
-
-    fn apply<I: CommandInfo, P: Parser<I>>(mem: &mut Memory<I, P>, data: Vec<(u16, u16)>) {
-        for x in &mut mem.data {
-            x.set(0)
-        }
-
-        for (pos, v) in data {
-            mem.data.get_mut(pos as usize).unwrap().set(v);
-        }
-    }
 }

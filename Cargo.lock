@@ -88,6 +88,7 @@ dependencies = [
  "imgui",
  "imgui-opengl-renderer",
  "imgui-sdl2",
+ "nfd",
  "nom",
  "path-clean",
  "sdl2",
@@ -117,6 +118,12 @@ dependencies = [
  "libc",
  "miniz_oxide",
 ]
+
+[[package]]
+name = "gcc"
+version = "0.3.55"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f5f3913fa0bfe7ee1fd8248b6b9f42a5af4b9d65ec2dd2c3c26132b950ecfc2"
 
 [[package]]
 name = "gl"
@@ -261,6 +268,14 @@ checksum = "a92518e98c078586bc6c934028adcca4c92a53d6a958196de835170a01d84e4b"
 dependencies = [
  "adler",
  "autocfg",
+]
+
+[[package]]
+name = "nfd"
+version = "0.0.4"
+source = "git+https://github.com/saurvs/nfd-rs.git#07578c5fea4d7b1f35fbf128f04b6264c3bf3c5a"
+dependencies = [
+ "gcc",
 ]
 
 [[package]]
