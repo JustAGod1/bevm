@@ -18,7 +18,6 @@ use crate::ui::help::HelpTool;
 use crate::ui::highlight::CommandHighlightTool;
 use crate::ui::io::IOTool;
 use crate::ui::layout::LayoutTool;
-use crate::ui::load_from_file::LoadFromFileTool;
 use crate::ui::log::LogTool;
 use crate::ui::popup::Popup;
 use crate::ui::registers::RegistersTool;
@@ -28,6 +27,7 @@ use crate::ui::window::{Tool, WindowTool};
 use self::imgui::{Context, FontConfig, FontGlyphRanges, FontId, FontSource, MenuItem, WindowFlags};
 use self::imgui::sys::ImGuiKey_Backspace;
 use self::sdl2::keyboard::Scancode;
+use crate::ui::tracing::TraceTool;
 
 pub struct PopupManager {
     popup_delayed: Vec<Box<dyn Popup>>,
@@ -156,10 +156,13 @@ impl Gui {
                         )
                         .size(0, -210)
                 )
-                .append(WindowTool::single_tool(
-                    0, 200,
-                    "Логи", LogTool::new(),
-                )
+                .append(
+                    WindowTool::new(
+                        "bottom",
+                        0, 200,
+                    )
+                        .append("Логи", LogTool::new())
+                        .append("Таблица трассировки", TraceTool::new())
                 ),
             state: GuiState::new(computer),
         };
