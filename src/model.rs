@@ -159,6 +159,7 @@ impl Registers {
 pub struct Memory<I: CommandInfo,P: Parser<I>> {
     pub parser: P,
     pub data: Vec<MemoryCell>,
+    pub name: &'static str,
     phantom: PhantomData<I>
 }
 
@@ -284,11 +285,13 @@ impl Computer {
             general_memory: Rc::new(RefCell::new(Memory {
                 data: Self::mem(2048),
                 parser: GeneralParser::new(),
+                name: "general",
                 phantom: PhantomData::default()
             })),
             mc_memory: Rc::new(RefCell::new(Memory {
                 data: Self::mem(256),
                 parser: McParser::new(),
+                name: "mpu",
                 phantom: PhantomData::default()
             })),
             logs: Vec::<LogEntry>::new()

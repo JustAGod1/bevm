@@ -7,7 +7,9 @@ use crate::ui::gui::{PopupManager, Gui, GuiState};
 use std::rc::Rc;
 use std::cell::RefCell;
 use imgui::__core::cell::RefMut;
-use crate::ui::popup::{PopupParseError};
+use crate::ui::popup::{PopupParseError, PopupMessage};
+use std::fs::{OpenOptions, File};
+use std::io::Write;
 
 
 #[derive(PartialEq, Eq)]
@@ -53,32 +55,30 @@ impl CellRepresentation {
             }
         }
         width_t.pop(ui);
-
     }
     fn draw(&self, cell: &mut MemoryCell, ui: &Ui) {
         match self {
             CellRepresentation::Hex => self.draw_hex(cell, ui),
             CellRepresentation::Binary => self.draw_binary(cell, ui),
         }
-
     }
-
 }
+
 pub struct CellsTool<I: CommandInfo, P: Parser<I>, F>
     where F: Fn(&Computer) -> u16
 {
     page: Rc<RefCell<Memory<I, P>>>,
     counter_register: F,
-    representation: CellRepresentation
+    representation: CellRepresentation,
 }
 
-impl <I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16>Tool for CellsTool<I, P, F>
+impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> Tool for CellsTool<I, P, F>
     where I: 'static
 {
     fn draw(&mut self, ui: &Ui, state: &mut GuiState) {
         let mut idx = 0u32;
 
-        self.draw_representation_selection(ui);
+        self.draw_menu_bar(state, ui);
 
         let jump_needed = ui.button(im_str!("Перейти к исполняемой команде"), [0.0, 0.0]);
 
@@ -158,33 +158,157 @@ impl <I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16>Tool for CellsTool<I
         if focused.is_some() {
             state.current_command = Some(Box::new(focused.unwrap()));
         } else {
-           state.current_command = Some(Box::new(parser.parse(data.get(current_executed as usize).unwrap().get())));
-
+            state.current_command = Some(Box::new(parser.parse(data.get(current_executed as usize).unwrap().get())));
         }
 
         w_token.end(ui);
     }
 }
 
-impl <I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
-
+impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
     pub fn new(page: Rc<RefCell<Memory<I, P>>>, counter_register: F) -> CellsTool<I, P, F> {
         CellsTool {
             counter_register,
             page,
-            representation: CellRepresentation::Hex
+            representation: CellRepresentation::Hex,
         }
     }
 
-    fn load_from_file(&mut self, file: String) {
+    fn draw_menu_bar(&mut self, state: &mut GuiState, ui: &Ui) {
+        ui.menu_bar(|| {
+            ui.menu(im_str!("Опции"), true, || {
+                self.draw_file_actions(state, ui);
+                self.draw_representation_selection(ui);
+            });
+        })
+    }
 
+
+    fn on_save_to_file(&mut self, state: &mut GuiState) {
+        let filename = match nfd::open_pick_folder(None) {
+            Ok(r) => match r {
+                nfd::Response::Okay(f) => {
+                    f
+                }
+                _ => {return;}
+            }
+            Err(e) => {
+                state.popup_manager.open(PopupMessage::new("Ошибка выбора папки", format!("Не могу открыть окно выбора папки: {}", e.to_string())));
+                return;
+            }
+        };
+
+        let filename = format!("{}/{}.mm", filename, self.page.borrow().name);
+
+        match self.save_to_file(filename.as_str()) {
+            Ok(_) => state.popup_manager.open(PopupMessage::new("Успех", format!("Успешно сохранил в файл {}", filename))),
+            Err(e) => state.popup_manager.open(PopupMessage::new("Провал", format!("Не могу сохранить в файл \"{}\": {}", filename, e)))
+        }
+    }
+
+    fn save_to_file(&mut self, file: &str) -> Result<(), String> {
+        let mut f = OpenOptions::new()
+            .create(true)
+            .append(false)
+            .write(true)
+            .truncate(true)
+            .open(file)
+            .map_err(|e| e.to_string())?;
+
+
+        let mut s = String::new();
+        let mut prev_zero = true;
+        let mut prev_prev_zero = true;
+
+        let mut pos = 0usize;
+        for cell in &self.page.borrow().data {
+            prev_prev_zero = prev_zero;
+
+            let v = cell.get();
+            if v == 0 {
+                prev_zero = true
+            } else {
+                if prev_prev_zero && prev_zero {
+                    s.push_str(format!("$pos {:X}\n", pos).as_str())
+                }
+                if self.page.borrow().parser.supports_rev_parse() {
+                    let mnemonic = self.page.borrow().parser.parse(v).mnemonic();
+                    s.push_str(mnemonic.as_str())
+                } else {
+                    s.push_str(format!("{:0>4X}", v).as_str())
+                }
+                s.push('\n');
+                prev_zero = false;
+            }
+
+            pos += 1;
+        }
+
+        f.write(s.as_bytes());
+        f.flush();
+
+        Ok(())
+    }
+
+    fn on_load_from_file(&mut self, state: &mut GuiState) {
+        let file_name = match nfd::open_file_dialog(Some("mm"), None) {
+            Ok(r) => match r {
+                nfd::Response::Okay(f) => {
+                    f
+                }
+                _ => { return; }
+            }
+            Err(e) => {
+                state.popup_manager.open(PopupMessage::new("Ошибка выбора файла", format!("Не могу открыть окно выбора файла: {}", e.to_string())));
+                return;
+            }
+        };
+
+
+        let mut f = match File::open(file_name) {
+            Ok(mut f) => f,
+            Err(e) => {
+                state.popup_manager.open(PopupMessage::new("Ошибка открытия файла", e.to_string()));
+                return;
+            }
+        };
+
+
+        let parse_result = crate::parse::file::parse_file(&mut f, &self.page.borrow().parser, 0xFF);
+
+
+        if parse_result.is_err() {
+            let msg = parse_result.unwrap_err();
+            state.popup_manager.open(PopupMessage::new("Ошибка во время парсинга", msg));
+            return;
+        }
+
+        let parse_result = parse_result.unwrap();
+
+        let mem = &mut self.page.borrow_mut().data;
+        for x in mem.iter_mut() {
+            x.set(0)
+        }
+
+        for (pos, v) in parse_result {
+            mem.get_mut(pos as usize).unwrap().set(v);
+        }
+    }
+
+    fn draw_file_actions(&mut self, state: &mut GuiState, ui: &Ui) {
+        if let Some(token) = ui.begin_menu(im_str!("Файл"), true) {
+            if MenuItem::new(im_str!("Сохранить")).build(ui) {
+                self.on_save_to_file(state);
+            }
+            if MenuItem::new(im_str!("Загрузить")).build(ui) {
+                self.on_load_from_file(state);
+            }
+
+            token.end(ui)
+        }
     }
 
     fn draw_representation_selection(&mut self, ui: &Ui) {
-        let token = ui.begin_menu_bar();
-        if token.is_none() { return; }
-        let token = token.unwrap();
-
         if let Some(token) = ui.begin_menu(im_str!("Представление ячеек"), true) {
             if MenuItem::new(ImString::from(CellRepresentation::Hex.title()).as_ref())
                 .selected(self.representation == CellRepresentation::Hex)
@@ -200,13 +324,7 @@ impl <I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> 
             }
             token.end(ui)
         }
-
-
-        token.end(ui);
     }
 
-    pub fn draw(&mut self, computer: &mut Computer, ui: &Ui) {
-
-    }
-
+    pub fn draw(&mut self, computer: &mut Computer, ui: &Ui) {}
 }

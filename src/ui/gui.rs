@@ -83,7 +83,7 @@ impl Gui {
                         .append(
                             WindowTool::new(
                                 "mem",
-                                500, 0,
+                                250, 0,
                             )
                                 .append("Основная память", CellsTool::new((&computer.general_memory).clone(), |c| c.registers.r_command_counter))
                                 .append("Память МПУ", CellsTool::new((&computer.mc_memory).clone(), |c| c.registers.r_micro_command_counter as u16))
@@ -137,16 +137,9 @@ impl Gui {
                                             LayoutTool::new_vertical("infoandload")
                                                 .append(
                                                     WindowTool::single_tool(
-                                                        0, -240,
+                                                        0, 0,
                                                         "Информация о команде",
                                                         CommandHighlightTool::new(),
-                                                    )
-                                                )
-                                                .append(
-                                                    WindowTool::single_tool(
-                                                        0, 0,
-                                                        "Загрузить из файла",
-                                                        LoadFromFileTool::new(),
                                                     )
                                                 )
                                                 .size(315, 0)
