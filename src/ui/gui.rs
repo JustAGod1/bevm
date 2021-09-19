@@ -157,6 +157,7 @@ impl Gui {
                                                 .append("Синтаксис", HelpTool::new(include_str!("../help/file.txt")))
                                                 .append("Шпора", HelpTool::new(include_str!("../help/cheatsheet.txt")))
                                                 .append("Нотация", HelpTool::new(include_str!("../help/notation.txt")))
+                                                .append("Да как остановить епт", HelpTool::new(include_str!("../help/run_and_stop.txt")))
                                         )
                                 )
                         )
