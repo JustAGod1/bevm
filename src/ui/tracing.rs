@@ -62,7 +62,7 @@ impl Tool for TraceTool {
 
             let mut steps_left = self.max_len;
 
-            if let Err(e) = f.write("Адрес,Код,СК,РА,РК,РД,А,С,Адрес,Новый код\n".as_bytes()) {
+            if let Err(e) = f.write("\"Адрес\",\"Код\",\"СК\",\"РА\",\"РК\",\"РД\",\"А\",\"С\",\"Адрес\",\"Новый код\"\n".as_bytes()) {
                 state.popup_manager.open(PopupMessage::new("Ошибка записи", format!("Ошибка записи в файл \"{}\": {}", filename, e.to_string())));
                 return
             }
