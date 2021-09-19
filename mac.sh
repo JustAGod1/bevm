@@ -5,4 +5,4 @@ cp target/release/libSDL2-2.0.dylib artifacts/BasePC\ 2.0.app/Contents/MacOS/lib
 
 create-dmg --volname "BasePC 2.0" "artifacts/BasePC 2.0.app"
 
-mv "BasePC 2.0 0.01.dmg" "artifacts/BasePC 2.0.dmg"
+mv "BasePC 2.0 0.01.dmg" "artifacts/MacOS-BasePC2.dmg"
