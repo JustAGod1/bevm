@@ -1,4 +1,4 @@
-1.  ADD M    1XXX    A = A & *M
+1.  AND M    1XXX    A = A & *M
 2.  MOV M    3XXX    *M = A
 3.  ADD M    4XXX    A = A + *M
 4.  ADC M    5XXX    A = *M + A + C
