@@ -1,5 +1,5 @@
 use crate::ui::window::Tool;
-use imgui::{Ui, im_str, Io};
+use imgui::{Ui, im_str, Io, ImStr, ImString};
 use crate::ui::gui::GuiState;
 use crate::ui::popup::PopupMessage;
 use std::fs::OpenOptions;
@@ -23,10 +23,17 @@ impl TraceTool {
 
 impl Tool for TraceTool {
     fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
-        ui.text("Инструмент для создания таблицы трассировок.");
-        ui.text("Для более удобного и понятного использования таблица сохраняется в формате CSV");
+
+        let text = "Инструмент для создания таблицы трассировок.\n\n\
+            Для более удобного и понятного использования таблица сохраняется в формате CSV\n\n\
+            Excel -> File -> Import\n\n\
+            Важно сказать эксэлю, что нужно форматировать закавыченные ячейки как текст\n\n\
+            Максимальная длина таблицы:"
+            ;
+
+        ui.text_wrapped(ImString::new(text).as_ref());
         let width_t = ui.push_item_width(160.0);
-        ui.input_int(im_str!("Максимальная длина таблицы"), &mut self.max_len)
+        ui.input_int(im_str!("###max_len"), &mut self.max_len)
             .build();
         width_t.pop(ui);
         self.max_len = self.max_len.clamp(0, 200);
@@ -62,7 +69,7 @@ impl Tool for TraceTool {
 
             let mut steps_left = self.max_len;
 
-            if let Err(e) = f.write("\"Адрес\",\"Код\",\"СК\",\"РА\",\"РК\",\"РД\",\"А\",\"С\",\"Адрес\",\"Новый код\"\n".as_bytes()) {
+            if let Err(e) = f.write("\"Адрес\"\t\"Код\"\t\"СК\"\t\"РА\"\t\"РК\"\t\"РД\"\t\"А\"\t\"С\"\t\"Адрес\"\t\"Новый код\"\n".as_bytes()) {
                 state.popup_manager.open(PopupMessage::new("Ошибка записи", format!("Ошибка записи в файл \"{}\": {}", filename, e.to_string())));
                 return
             }
@@ -89,26 +96,26 @@ impl Tool for TraceTool {
                 let mut line = String::new();
 
                 // Address
-                line.push_str(pos.to_string().as_str()); line.push(',');
+                line.push_str(format!("\"{:0>3X}\"", pos).as_str()); line.push('\t');
                 // Code
-                line.push_str(code.to_string().as_str()); line.push(',');
+                line.push_str(format!("\"{:0>4X}\"", code).as_str()); line.push('\t');
 
                 // СК
-                line.push_str(state.computer.registers.r_command_counter.to_string().as_str()); line.push(',');
+                line.push_str(format!("\"{:0>4X}\"", state.computer.registers.r_command_counter).as_str()); line.push('\t');
                 // РА
-                line.push_str(state.computer.registers.r_address.to_string().as_str()); line.push(',');
+                line.push_str(format!("\"{:0>4X}\"", state.computer.registers.r_address).as_str()); line.push('\t');
                 // РК
-                line.push_str(state.computer.registers.r_command.to_string().as_str()); line.push(',');
+                line.push_str(format!("\"{:0>4X}\"", state.computer.registers.r_command).as_str()); line.push('\t');
                 // РД
-                line.push_str(state.computer.registers.r_data.to_string().as_str()); line.push(',');
+                line.push_str(format!("\"{:0>4X}\"", state.computer.registers.r_data).as_str()); line.push('\t');
                 // А
-                line.push_str(state.computer.registers.r_counter.to_string().as_str()); line.push(',');
+                line.push_str(format!("\"{:0>4X}\"", state.computer.registers.r_counter).as_str()); line.push('\t');
                 // С
-                line.push(if state.computer.registers.get_overflow() {'1'} else {'0'}); line.push(',');
+                line.push(if state.computer.registers.get_overflow() {'1'} else {'0'}); line.push('\t');
 
                 if let Some((pos, nv)) = diff {
-                    line.push_str(pos.to_string().as_str()); line.push(',');
-                    line.push_str(nv.to_string().as_str());
+                    line.push_str(format!("\"{:0>3X}\"", pos).as_str()); line.push('\t');
+                    line.push_str(format!("\"{:0>4X}\"", nv).as_str());
                 }
 
                 line.push('\n');
@@ -120,6 +127,7 @@ impl Tool for TraceTool {
                 steps_left -= 1;
             }
 
+            state.popup_manager.open(PopupMessage::new("Успех", format!("Успешно сохранил трассировку в {}", filename)));
         }
 
 
