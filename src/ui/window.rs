@@ -21,7 +21,7 @@ impl Tool for WindowTool {
 
     fn draw(&mut self, ui: &Ui, state: &mut GuiState) {
         let token = ChildWindow::new(&self.id)
-            .size([relative_width(self.width, ui), relative_height(self.height, ui)])
+            .size([0.0,0.0])
             .movable(false)
             .border(true)
             .menu_bar(true)

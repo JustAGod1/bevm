@@ -79,8 +79,10 @@ impl Gui {
             content:
             LayoutTool::new_vertical("root")
                 .append(
-                    LayoutTool::new_horizontal("left")
+                    -210,
+                    LayoutTool::new_horizontal("main")
                         .append(
+                            250,
                             WindowTool::new(
                                 "mem",
                                 250, 0,
@@ -89,13 +91,16 @@ impl Gui {
                                 .append("Память МПУ", CellsTool::new((&computer.mc_memory).clone(), |c| c.registers.r_micro_command_counter as u16))
                         )
                         .append(
+                            0,
                             LayoutTool::new_vertical("right")
                                 .append(
+                                    250,
                                     WindowTool::single_tool(
                                         0, 250,
                                         "Состояние ЭВМ",
                                         LayoutTool::new_horizontal("regandstat")
                                             .append(
+                                                300,
                                                 WindowTool::single_tool(
                                                     300, 0,
                                                     "Регистры",
@@ -103,6 +108,7 @@ impl Gui {
                                                 )
                                             )
                                             .append(
+                                                0,
                                                 WindowTool::single_tool(
                                                     0, 0,
                                                     "Разбор регистра статуса (РС)",
@@ -112,12 +118,15 @@ impl Gui {
                                     )
                                 )
                                 .append(
+                                    0,
                                     LayoutTool::new_horizontal("middle")
                                         .append(
+                                            315,
                                             WindowTool::single_tool(
                                                 315, 0,
                                                 "Панель управления", LayoutTool::new_vertical("execandio")
                                                     .append(
+                                                        135,
                                                         WindowTool::single_tool(
                                                             0, 135,
                                                             "Управление исполнением",
@@ -125,6 +134,7 @@ impl Gui {
                                                         )
                                                     )
                                                     .append(
+                                                        0,
                                                         WindowTool::single_tool(
                                                             0, 0,
                                                             "Внешние устройства",
@@ -134,8 +144,10 @@ impl Gui {
                                             )
                                         )
                                         .append(
+                                            315,
                                             LayoutTool::new_vertical("infoandload")
                                                 .append(
+                                                    0,
                                                     WindowTool::single_tool(
                                                         0, 0,
                                                         "Информация о команде",
@@ -145,6 +157,7 @@ impl Gui {
                                                 .size(315, 0)
                                         )
                                         .append(
+                                            0,
                                             WindowTool::new("help", 0, 0)
                                                 .append("Прелюдия", HelpTool::new(include_str!("../help/prelude.txt")))
                                                 .append("Синтаксис", HelpTool::new(include_str!("../help/file.txt")))
@@ -154,9 +167,9 @@ impl Gui {
                                         )
                                 )
                         )
-                        .size(0, -210)
                 )
                 .append(
+                    200,
                     WindowTool::new(
                         "bottom",
                         0, 200,
@@ -206,7 +219,7 @@ impl Gui {
 
         let mut imgui = imgui::Context::create();
         imgui.set_ini_filename(None);
-        let font = self.init_font(&mut imgui);
+        let font = Self::init_font(&mut imgui);
 
         imgui.io_mut().key_map[ImGuiKey_Backspace as usize] = Scancode::Backspace as u32;
 
@@ -281,7 +294,7 @@ impl Gui {
         }
     }
 
-    fn init_font(&self, imgui: &mut Context) -> FontId {
+    fn init_font(imgui: &mut Context) -> FontId {
         let font_data = FontSource::TtfData {
             data: include_bytes!("../UbuntuMono-R.ttf"),
             size_pixels: 16.0,
