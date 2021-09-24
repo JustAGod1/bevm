@@ -1,5 +1,5 @@
 use crate::ui::window::Tool;
-use imgui::{Ui, ImString};
+use imgui::{Ui, ImString, Io};
 use crate::ui::gui::GuiState;
 use imgui::StyleColor::Header;
 
@@ -16,7 +16,7 @@ impl HelpTool {
 }
 
 impl Tool for HelpTool {
-    fn draw(&mut self, ui: &Ui, _: &mut GuiState) {
+    fn draw(&mut self, ui: &Ui, io: &Io, _: &mut GuiState) {
         ui.text_wrapped(ImString::new(self.text).as_ref());
     }
 }

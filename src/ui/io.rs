@@ -1,5 +1,5 @@
 use crate::ui::window::Tool;
-use imgui::{Ui, im_str, ImString};
+use imgui::{Ui, im_str, ImString, Io};
 use crate::ui::gui::GuiState;
 use imgui::sys::{igBeginTable, ImGuiTableFlags_None, ImVec2, igTableNextRow, ImGuiTableRowFlags_None, igTableNextColumn, igEndTable};
 use std::os::raw::c_int;
@@ -13,7 +13,7 @@ impl IOTool {
 }
 
 impl Tool for IOTool {
-    fn draw(&mut self, ui: &Ui, state: &mut GuiState) {
+    fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
 
         let w_tok = ui.push_item_width(150.0);
 

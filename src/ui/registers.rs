@@ -1,5 +1,5 @@
 use crate::ui::window::Tool;
-use imgui::{Ui, TreeNode, im_str, ImString};
+use imgui::{Ui, TreeNode, im_str, ImString, Io};
 use crate::ui::gui::GuiState;
 use crate::model::{Computer, Register};
 use imgui::sys::{igBeginTable, ImGuiTableFlags_BordersH, ImGuiTableFlags_None, ImVec2, igEndTable, igTableNextColumn, igTableNextRow, ImGuiTableRowFlags_None};
@@ -14,7 +14,7 @@ impl RegistersTool {
 }
 
 impl Tool for RegistersTool {
-    fn draw(&mut self, ui: &Ui, state: &mut GuiState) {
+    fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
         fn reg_field(ui: &Ui, computer: &mut Computer, register: Register, tooltip: &str) {
             let mut content = ImString::from(register.format(computer));
             let t = ui.push_item_width(80.0);

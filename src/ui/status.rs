@@ -1,5 +1,5 @@
 use crate::ui::window::Tool;
-use imgui::{Ui, im_str, ImString};
+use imgui::{Ui, im_str, ImString, Io};
 use crate::ui::gui::GuiState;
 use crate::bit_at;
 use imgui::sys::{igBeginTable, ImGuiTableFlags_None, ImVec2, igNextColumn, igTableNextRow, ImGuiTableRowFlags_None, igTableNextColumn, igEndTable};
@@ -27,7 +27,7 @@ impl StatusTool {
 }
 
 impl Tool for StatusTool {
-    fn draw(&mut self, ui: &Ui, state: &mut GuiState) {
+    fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
 
         unsafe {
             igBeginTable(im_str!("Status").as_ptr(), 3, ImGuiTableFlags_None as c_int, ImVec2::new(0.0, 0.0), 0.0);

@@ -1,5 +1,5 @@
 use crate::model::{Computer, MemoryCell, Memory, Register};
-use imgui::{Ui, ChildWindow, StyleColor, Id, im_str, ImString, MenuItem, FocusedWidget, StyleVar};
+use imgui::{Ui, ChildWindow, StyleColor, Id, im_str, ImString, MenuItem, FocusedWidget, StyleVar, Io};
 use crate::parse::mc::parse;
 use crate::parse::{Parser, CommandInfo};
 use crate::ui::window::Tool;
@@ -75,7 +75,7 @@ pub struct CellsTool<I: CommandInfo, P: Parser<I>, F>
 impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> Tool for CellsTool<I, P, F>
     where I: 'static
 {
-    fn draw(&mut self, ui: &Ui, state: &mut GuiState) {
+    fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
         let mut idx = 0u32;
 
         self.draw_menu_bar(state, ui);

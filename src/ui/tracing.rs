@@ -1,5 +1,5 @@
 use crate::ui::window::Tool;
-use imgui::{Ui, im_str};
+use imgui::{Ui, im_str, Io};
 use crate::ui::gui::GuiState;
 use crate::ui::popup::PopupMessage;
 use std::fs::OpenOptions;
@@ -22,7 +22,7 @@ impl TraceTool {
 
 
 impl Tool for TraceTool {
-    fn draw(&mut self, ui: &Ui, state: &mut GuiState) {
+    fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
         ui.text("Инструмент для создания таблицы трассировок.");
         ui.text("Для более удобного и понятного использования таблица сохраняется в формате CSV");
         let width_t = ui.push_item_width(160.0);

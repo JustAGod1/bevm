@@ -1,5 +1,5 @@
 use crate::ui::window::Tool;
-use imgui::Ui;
+use imgui::{Ui, Io};
 use crate::ui::gui::GuiState;
 
 pub struct CommandHighlightTool;
@@ -11,7 +11,7 @@ impl CommandHighlightTool {
 }
 
 impl Tool for CommandHighlightTool {
-    fn draw(&mut self, ui: &Ui, state: &mut GuiState) {
+    fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
         if state.current_command.is_none() { return; }
 
         let command = state.current_command.as_ref().unwrap();

@@ -24,10 +24,11 @@ use crate::ui::registers::RegistersTool;
 use crate::ui::status::StatusTool;
 use crate::ui::window::{Tool, WindowTool};
 
-use self::imgui::{Context, FontConfig, FontGlyphRanges, FontId, FontSource, MenuItem, WindowFlags};
+use self::imgui::{Context, FontConfig, FontGlyphRanges, FontId, FontSource, MenuItem, WindowFlags, Io};
 use self::imgui::sys::ImGuiKey_Backspace;
 use self::sdl2::keyboard::Scancode;
 use crate::ui::tracing::TraceTool;
+use std::cell::Cell;
 
 pub struct PopupManager {
     popup_delayed: Vec<Box<dyn Popup>>,
@@ -142,6 +143,7 @@ impl Gui {
                                                         )
                                                     ),
                                             )
+                                                .append("Таблица трассировки", TraceTool::new())
                                         )
                                         .append(
                                             315,
@@ -175,7 +177,6 @@ impl Gui {
                         0, 200,
                     )
                         .append("Логи", LogTool::new())
-                        .append("Таблица трассировки", TraceTool::new())
                 ),
             state: GuiState::new(computer),
         };
@@ -268,11 +269,15 @@ impl Gui {
             last_frame = now;
             imgui.io_mut().delta_time = delta_s;
 
+            let io = unsafe {
+                &mut *(imgui.io_mut() as *mut Io)
+            };
             let ui = imgui.frame();
 
             let token = ui.push_font(font);
 
-            let closed = !self.draw_ui(&ui, &mut window);
+
+            let closed = !self.draw_ui(&ui, io, &mut window);
             self.do_open_and_draw(&ui);
 
             token.pop(&ui);
@@ -308,7 +313,7 @@ impl Gui {
         imgui.fonts().add_font(&[font_data])
     }
 
-    fn draw_ui(&mut self, ui: &Ui, sdl_window: &mut SDLWindow) -> bool {
+    fn draw_ui(&mut self, ui: &Ui, io: &Io, sdl_window: &mut SDLWindow) -> bool {
         let mut opened = true;
 
         let mut window = Window::new(im_str!("Main"))
@@ -321,7 +326,7 @@ impl Gui {
 
 
         if let Some(token) = window.begin(&ui) {
-            self.content.draw(ui, &mut self.state);
+            self.content.draw(ui, io, &mut self.state);
             token.end(ui);
         }
 
