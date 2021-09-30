@@ -55,8 +55,15 @@ impl GeneralParser {
             mnemonic_map: HashMap::new()
         };
 
+
+        parser.register(SimpleCommand::new(0xFF00, "HZF", "Команда для которой не задано поведение. То есть она ничего не делает."));
+        parser.register(SimpleCommand::new(0xFE00, "HZE", "Команда для которой не задано поведение. То есть она ничего не делает."));
+        parser.register(SimpleCommand::new(0xFD00, "HZD", "Команда для которой не задано поведение. То есть она ничего не делает."));
+        parser.register(SimpleCommand::new(0xFC00, "HZC", "Команда для которой не задано поведение. То есть она ничего не делает."));
+
         parser.register(SimpleCommand::new(0xF700, "ROR", "Сдвигает биты в регистре А вправо. При этом содержимое С попадает в старший бит А, а младший бит А попадает в С"));
         parser.register(SimpleCommand::new(0xFB00, "DI", "Запрещает прерывания"));
+
         parser.register(SimpleCommand::new(0xF300, "CLC", "Устанавливает С в 0"));
         parser.register(SimpleCommand::new(0xF500, "CMC", "Инвертирует С. То есть, если С было равно 1, оно станет 0 и наоборот."));
         parser.register(SimpleCommand::new(0xF600, "ROL", "Сдвигает биты в регистре А влево. При этом содержимое С попадает в младший бит А, а старший бит А попадает в С."));
@@ -84,6 +91,15 @@ impl GeneralParser {
         parser.register(AddressCommand::new_address(0x2000, "JSR", "Команда для организации логики подпрограмм. Значение регистра СК будет положено в ячейку по адресу X после чего регистру СК будет присвоенное значение X + 1"));
         parser.register(AddressCommand::new_address(0x0000, "ISZ", "Увеличивает значение в ячейче по адресу X на 1. После чего, если значение в этой ячейке больше 0, увеличивает СК на 1 тем самым \"перепрыгивает\" следующую команду."));
 
+        parser.register(AddressCommand::new_address(0x7000, "HZA7", "Команда для которой не задано поведение. То есть она ничего не делает."));
+        parser.register(AddressCommand::new_address(0xD000, "HZAD", "Команда для которой не задано поведение. То есть она ничего не делает."));
+
+        parser.sorted.sort_by(|a,b| {
+            let l = format!("{:b}", a.mask()).chars().into_iter().filter(|c| *c =='1').count();
+            let r = format!("{:b}", b.mask()).chars().into_iter().filter(|c| *c =='1').count();
+            r.cmp(&l)
+        });
+
         parser
     }
 
@@ -92,7 +108,7 @@ impl GeneralParser {
 impl Parser<GeneralCommandInfo> for GeneralParser {
     fn parse(&self, v: u16) -> GeneralCommandInfo {
         for command in self.sorted.iter() {
-            if command.mask().bitand(v).bitand(command.mask()) == command.mask() {
+            if command.matching(v) {
                 return GeneralCommandInfo::new(command.clone(), v)
             }
         }
@@ -122,6 +138,11 @@ impl Parser<GeneralCommandInfo> for GeneralParser {
 
 
 trait GeneralCommand {
+
+    fn matching(&self, cmd: u16) -> bool {
+        self.mask().bitand(cmd).bitand(self.mask()) == self.mask()
+    }
+
     fn mnemonic(&self) -> &str;
 
     fn mask(&self) -> u16;
