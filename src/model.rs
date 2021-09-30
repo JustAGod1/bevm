@@ -268,6 +268,12 @@ impl Computer {
 
     pub fn reset_memory(&mut self) {
         let data = include_bytes!("mc.txt") as &[u8];
+        for x in &mut self.mc_memory.borrow_mut().data {
+            x.data = 0;
+        }
+        for x in &mut self.general_memory.borrow_mut().data {
+            x.data = 0;
+        }
         for line in BufReader::new(data).lines().map(|r| r.unwrap())
         {
             let splitted = line.split(" ").collect::<Vec<&str>>();

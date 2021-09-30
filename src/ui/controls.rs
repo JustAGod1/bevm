@@ -1,5 +1,5 @@
 use crate::model::{Computer, Register};
-use imgui::{Ui, ChildWindow, TreeNode, im_str, ImString, Io};
+use imgui::{Ui, ChildWindow, TreeNode, im_str, ImString, Io, MenuItem};
 use crate::parse::mc::ExecutionResult;
 use crate::ui::gui::{PopupManager, Gui, GuiState};
 use crate::ui::window::Tool;
@@ -23,6 +23,12 @@ impl SmartControlsTool {
     }
 
     fn draw_control(&mut self, state: &mut GuiState, ui: &Ui) {
+        if let Some(tok) = ui.begin_menu_bar() {
+            if MenuItem::new(im_str!("Сброс ЭВМ!")).build(ui) {
+                state.computer.reset_memory();
+            }
+            tok.end(ui);
+        }
         let computer = &mut state.computer;
 
         let w = ui.content_region_avail().get(0).unwrap() / 2.0 - 4.0;
