@@ -94,6 +94,7 @@ impl Register {
     }
 }
 
+#[derive(Clone)]
 pub struct Registers {
     pub r_micro_command_counter: u8, // СчМК. текущая микрокомана
     pub r_status: u16, // РС - регистр состояния. в разрядах биты статуса
