@@ -1,4 +1,4 @@
-use crate::model::{Computer, Register};
+use crate::model::{Computer, Register, Registers};
 use imgui::{Ui, ChildWindow, TreeNode, im_str, ImString, Io, MenuItem};
 use crate::parse::mc::ExecutionResult;
 use crate::ui::gui::{PopupManager, Gui, GuiState};
@@ -26,6 +26,7 @@ impl SmartControlsTool {
         if let Some(tok) = ui.begin_menu_bar() {
             if MenuItem::new(im_str!("Сброс ЭВМ!")).build(ui) {
                 state.computer.reset_memory();
+                state.computer.registers = Registers::new()
             }
             tok.end(ui);
         }
