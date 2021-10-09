@@ -264,7 +264,7 @@ fn perform_tracing(computer: &mut Computer, len: usize) -> Vec<TraceElement> {
 
     let mut result = Vec::new();
 
-    while steps_left > 0 && computer.registers.r_command != 0xF200 {
+    while steps_left > 0 && computer.registers.r_command != 0xF000 {
         let pos = computer.registers.r_command_counter;
         let code = computer.general_memory.borrow().data.get(pos as usize).unwrap().get();
         let mem_before = computer.general_memory.borrow().data.clone();
