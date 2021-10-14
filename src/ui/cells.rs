@@ -85,7 +85,13 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> Tool for CellsTool<I
         let w_token = ChildWindow::new("cells_inside")
             .always_vertical_scrollbar(true)
             .border(true)
-            .begin(ui).unwrap();
+            .begin(ui);
+
+        if w_token.is_none() {
+            return;
+        }
+
+        let w_token = w_token.unwrap();
 
 
         let current_executed = (self.counter_register)(&mut state.computer);
