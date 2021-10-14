@@ -125,8 +125,8 @@ impl Parser<GeneralCommandInfo> for GeneralParser {
             return Err(format!("Пустая строка получается"))
         }
 
-        let mnemonic = mnemonic.unwrap();
-        let command = self.mnemonic_map.get(mnemonic);
+        let mnemonic = mnemonic.unwrap().to_uppercase();
+        let command = self.mnemonic_map.get(mnemonic.as_str());
         if command.is_none() {
             return Err(format!("Неизвестная мнемоника {}", mnemonic))
         }
