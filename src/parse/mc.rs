@@ -184,7 +184,7 @@ impl MicroCommand for OperationalCommand0 {
                     r.get(computer).bitxor(0xFFFF)
                 } else { r.get(computer) }
             )
-            .unwrap_or(0);
+            .unwrap_or(if complement == Complement::Left {0xFFFF} else {0});
 
         let right = self.right_input()
             .map(
@@ -194,7 +194,7 @@ impl MicroCommand for OperationalCommand0 {
                     r.get(computer).bitxor(0xFFFF)
                 } else { r.get(computer) }
             )
-            .unwrap_or(0);
+            .unwrap_or(if complement == Complement::Right {0xFFFF} else {0});
 
 
         match self.operation() {
@@ -632,14 +632,14 @@ impl OperationalCommand0 {
                 |r| if complement == Complement::Left
                 { format!("!{}", r.mnemonic()) } else { r.mnemonic() }
             )
-            .unwrap_or("0".to_string());
+            .unwrap_or(if complement == Complement::Left { "!0".to_string()} else { "0".to_string() });
 
         let right = self.right_input()
             .map(
                 |r| if complement == Complement::Right
                 { format!("!{}", r.mnemonic()) } else { r.mnemonic() }
             )
-            .unwrap_or("0".to_string());
+            .unwrap_or(if complement == Complement::Right { "!0".to_string()} else { "0".to_string() });
 
         let expression = match self.operation() {
             Operation::LeftPlusRight => format!("БР={} + {}; ", left, right),
