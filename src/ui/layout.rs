@@ -81,6 +81,7 @@ impl LayoutTool {
                 if ui.is_item_active() {
                     let delta = *io.mouse_delta.get(1).unwrap();
                     container.len+= delta;
+                    container.len = container.len.max(1.0);
                 }
             }
             id_tok.pop(ui);
@@ -99,6 +100,7 @@ impl LayoutTool {
                 if ui.is_item_active() {
                     let delta = *io.mouse_delta.get(0).unwrap();
                     container.len+= delta;
+                    container.len = container.len.max(1.0);
                 }
                 ui.same_line(0.0);
             }
