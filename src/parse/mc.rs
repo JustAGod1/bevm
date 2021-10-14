@@ -251,7 +251,7 @@ impl MicroCommand for OperationalCommand1 {
             for cmd in io {
                 match cmd {
                     IOControl::Connect => {
-                        if computer.registers.r_data == computer.registers.r_address {
+                        if computer.registers.r_data == computer.registers.r_command {
                             computer.log(true, "Установил флаг ВВОД-ВВЫОД и передал управление модулю взаимодействия с ВУ".to_string());
                             computer.registers.set_io(true);
                             computer.process_io_command();

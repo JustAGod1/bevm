@@ -247,10 +247,11 @@ impl GeneralCommand for AddressCommand {
             panic!();
         }
 
+        let address = if !self.io { data.bitand(0x7FF) } else { data.bitand(0xF) };
         if data.bitand(0x0800) != 0 {
-            format!("{} ({:0>3X})", self.name, data.bitand(0x7FF))
+            format!("{} ({:0>3X})", self.name, address)
         } else {
-            format!("{} {:0>3X}", self.name, data.bitand(0x7FF))
+            format!("{} {:0>3X}", self.name, address)
         }
 
     }

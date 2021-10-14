@@ -236,18 +236,18 @@ impl Computer {
         let opcode = self.registers.r_data;
 
         let num = opcode.bitand(0xF) as usize;
-        if opcode.bitand(0x0300) != 0 {
+        if opcode.bitand(0x0300) == 0x0300 {
             let data = self.registers.r_counter.bitand(0xFF) as u8;
             self.log(false, format!("Перенес значение {:0>2X} из младших разрядов аккамулятора в ВУ номер {}", data, num));
             self.io_devices.get_mut(num).unwrap().data = data;
         }
-        else if opcode.bitand(0x0200) != 0 {
+        else if opcode.bitand(0x0200) == 0x0200 {
             self.registers.r_counter = self.registers.r_counter.bitand(0xFF00);
             let data = self.io_devices.get_mut(num as usize).unwrap().data as u16;
             self.registers.r_counter = self.registers.r_counter.bitor(data);
             self.log(false, format!("Перенес значение {:0>2X} из  ВУ номер {} в младшие разряды аккамулятора", data, num));
         }
-        else if opcode.bitand(0x0100) != 0 {
+        else if opcode.bitand(0x0100) == 0x0100 {
             self.registers.set_io_ready(self.io_devices.get(num).unwrap().ready);
             self.log(false, format!("Опросил ВУ номер {} на предмет готовности", num));
 
