@@ -237,12 +237,8 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
                 if prev_prev_zero && prev_zero {
                     s.push_str(format!("$pos {:X}\n", pos).as_str())
                 }
-                if self.page.borrow().parser.supports_rev_parse() {
-                    let mnemonic = self.page.borrow().parser.parse(v).mnemonic();
-                    s.push_str(mnemonic.as_str())
-                } else {
-                    s.push_str(format!("{:0>4X}", v).as_str())
-                }
+                let str = self.page.borrow().parser.parse(v).file_string();
+                s.push_str(str.as_str());
                 s.push('\n');
                 prev_zero = false;
             }

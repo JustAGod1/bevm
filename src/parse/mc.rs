@@ -33,6 +33,7 @@ pub enum ExecutionResult {
 pub trait MicroCommand  {
     fn run(&self, computer: &mut Computer) -> ExecutionResult;
     fn mnemonic(&self) -> String;
+    fn opcode(&self) -> u16;
 }
 
 pub struct OperationalCommand0(u16);
@@ -52,6 +53,10 @@ impl MicroCommandInfo {
 }
 
 impl CommandInfo for MicroCommandInfo {
+    fn file_string(&self) -> String {
+        format!("{:0>4X}", self.command.opcode())
+    }
+
     fn mnemonic(&self) -> String {
         self.command.mnemonic()
     }
@@ -112,6 +117,10 @@ impl MicroCommand for ControlCommand {
                 if self.needed_bit() {1} else {0},
                 format!("{:0>4X}", self.jump_address())
         )
+    }
+
+    fn opcode(&self) -> u16 {
+        self.0
     }
 }
 
@@ -215,6 +224,10 @@ impl MicroCommand for OperationalCommand0 {
 
         ExecutionResult::SUCCESS
 
+    }
+
+    fn opcode(&self) -> u16 {
+        self.0
     }
 
     fn mnemonic(&self) -> String {
@@ -334,6 +347,10 @@ impl MicroCommand for OperationalCommand1 {
         });
 
         ExecutionResult::SUCCESS
+    }
+
+    fn opcode(&self) -> u16 {
+        self.0
     }
 
     fn mnemonic(&self) -> String {

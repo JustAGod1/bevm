@@ -143,6 +143,8 @@ trait GeneralCommand {
         self.mask().bitand(cmd).bitand(self.mask()) == self.mask()
     }
 
+    fn file_string(&self, cmd: u16) -> String;
+
     fn mnemonic(&self) -> &str;
 
     fn mask(&self) -> u16;
@@ -171,6 +173,16 @@ impl SimpleCommand {
 }
 
 impl GeneralCommand for SimpleCommand {
+    fn file_string(&self, cmd: u16) -> String {
+        let excessive = cmd.bitand(self.mask.bitxor(0xFFFF));
+
+        if excessive != 0 {
+            format!("{:0>4X}", cmd)
+        } else {
+            self.mnemonic().to_owned()
+        }
+    }
+
     fn mnemonic(&self) -> &str {
         self.name
     }
@@ -188,7 +200,7 @@ impl GeneralCommand for SimpleCommand {
     }
 
     fn rev_parse(&self, s: &str) -> Result<u16, String> {
-        if s.trim() != self.name {
+        if s.trim().to_uppercase() != self.name {
             return Err(format!("{} является безадресной командой и не принимает аргументов", self.name))
         }
         Ok(self.mask)
@@ -234,6 +246,10 @@ impl AddressCommand {
 }
 
 impl GeneralCommand for AddressCommand {
+    fn file_string(&self, cmd: u16) -> String {
+        self.parse(cmd)
+    }
+
     fn mnemonic(&self) -> &str {
         self.name
     }
@@ -352,6 +368,10 @@ impl GeneralCommandInfo {
 }
 
 impl CommandInfo for GeneralCommandInfo {
+    fn file_string(&self) -> String {
+        self.info.file_string(self.opcode)
+    }
+
     fn mnemonic(&self) -> String {
         self.info.parse(self.opcode)
     }

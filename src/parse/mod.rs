@@ -5,6 +5,7 @@ pub mod general;
 pub mod file;
 
 pub trait CommandInfo {
+    fn file_string(&self) -> String;
     fn mnemonic(&self) -> String;
     fn draw_highlight(&self, ui: &Ui);
 }
