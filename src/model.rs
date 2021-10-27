@@ -62,7 +62,7 @@ impl Register {
         match self {
             Register::Status => computer.registers.r_status = data.bitand(0x1FFF),
             Register::MicroCommand => computer.registers.r_micro_command = data,
-            Register::Address => computer.registers.r_address = data,
+            Register::Address => computer.registers.r_address = data.bitand(0x7FF),
             Register::Command => computer.registers.r_command = data,
             Register::Data => computer.registers.r_data = data,
             Register::CommandCounter => computer.registers.r_command_counter = data.bitand(0x7FF),

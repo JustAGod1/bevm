@@ -9,7 +9,7 @@
 8.  BMI M    AXXX    if (A < 0)  CK = M
 9.  BEQ M    BXXX    if (A == 0) CK = M
 10. BR M     CXXX    CK = M
-11. ISZ M    0XXX    *M = *M + 1; if (*M > 0) CK++
+11. ISZ M    0XXX    *M = *M + 1; if (*M >= 0) CK++
 12. JSR M    2XXX    *M = CK; CK = M+1
 
 13. CLA      F200    A = 0
