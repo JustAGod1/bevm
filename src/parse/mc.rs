@@ -139,8 +139,7 @@ impl MicroCommand for OperationalCommand0 {
                 }
                 if overflow {
                     computer.log(true, format!("Установил 16 бит регистра БР в 1 т.к. произошло переполнение"));
-                    computer.registers.r_buffer = (computer.registers.r_counter as u32).bitor(0x10000);
-                    computer.registers.set_overflow(true);
+                    computer.registers.r_buffer = (computer.registers.r_buffer as u32).bitor(0x10000);
                 }
                 return ExecutionResult::SUCCESS;
             },
