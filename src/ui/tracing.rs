@@ -12,7 +12,7 @@ use std::process::Command;
 
 pub struct TraceTool {
     format: usize,
-    converters: [(&'static str, fn(ui: &Ui, state: &mut GuiState, usize)); 2],
+    converters: [(&'static str, fn(ui: &Ui, state: &mut GuiState, usize)); 3],
     max_len: i32,
 }
 
@@ -20,7 +20,7 @@ impl TraceTool {
     pub fn new() -> TraceTool {
         TraceTool {
             format: 0,
-            converters: [("CSV", csv_converter), ("HTML", html_converter)],
+            converters: [("CSV", csv_converter), ("HTML", html_converter), ("LaTeX", latex_converter)],
             max_len: 200
         }
     }
@@ -178,6 +178,67 @@ fn csv_converter(ui: &Ui, state: &mut GuiState, max_len: usize) {
 
 }
 
+fn latex_converter(ui: &Ui, state: &mut GuiState, max_len: usize) {
+    let text = "Сохраняет трассировку в LaTeX\n\n\
+    Используются пекеджи: multirow, babel и geometry.\n\n";
+
+    ui.text_wrapped(ImString::new(text).as_ref());
+    if ui.button(im_str!("Погнали!"), [160.0, 30.0]) {
+        let trace = perform_tracing(&mut state.computer, max_len);
+
+        let mut content = String::from("\\documentclass{article}\n\
+        \\usepackage{multirow}\n\
+        \\usepackage[margin=1.5cm]{geometry}\n\
+        \\usepackage[english,russian]{babel}\n\
+        \\begin{document}\n\
+        \\begin{table}[h]\n\
+        \t\\centering\n\
+        \t\\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|}\n\
+        \t\t\\hline\n\
+        \t\t\\multicolumn{2}{|c|}{Выполняемая команда} & \n\
+        \t\t\\multicolumn{6}{|c|}{Содержимое регистров после выполнения команды} & \n\
+        \t\t\\multicolumn{2}{|c|}{Изменившаяся ячейка} \\\\\n\
+        \t\t\\hline\n\
+        \t\tАдрес & Код & СК & РА & РК & РД & А & C & Адрес & Новый код \\\\\n\
+        \t\t\\hline\n");
+
+        for x in trace {
+            // Address
+            content.push_str(format!("\t\t{:0>3X} & ", x.pos).as_str());
+            // Code
+            content.push_str(format!("{:0>4X} & ", x.code).as_str());
+
+            // СК
+            content.push_str(format!("{:0>4X} & ", x.registers.r_command_counter).as_str());
+            // РА
+            content.push_str(format!("{:0>4X} & ", x.registers.r_address).as_str());
+            // РК
+            content.push_str(format!("{:0>4X} & ", x.registers.r_command).as_str());
+            // РД
+            content.push_str(format!("{:0>4X} & ", x.registers.r_data).as_str()); 
+            // А
+            content.push_str(format!("{:0>4X} & ", x.registers.r_counter).as_str());
+            // С
+            content.push(if x.registers.get_overflow() {'1'} else {'0'}); 
+            content.push_str(" & ");
+
+            if let Some((pos, nv)) = x.difference {
+                content.push_str(format!("{:0>3X} & ", pos).as_str());
+                content.push_str(format!("{:0>4X} \\\\\n", nv).as_str());
+            }
+            else {
+                content.push_str("& \\\\\n")
+            }
+
+            content.push_str("\t\t\\hline\n");
+        }
+        content.push_str("\t\\end{tabular}\n\
+        \t\\caption{Таблица трассировки}\n\
+        \\end{table}\n\
+        \\end{document}\n");
+        write_to_file(content.as_str(), "tex", state);
+    }
+}
 
 impl Tool for TraceTool {
     fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
