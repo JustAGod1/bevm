@@ -40,7 +40,7 @@ impl Tool for RegistersTool {
             igBeginTable(im_str!("general_reg").as_ptr(), 2, ImGuiTableFlags_None as c_int, ImVec2::new(250.0, 0.0), 0.0);
             igTableNextRow(ImGuiTableRowFlags_None as c_int, 0.0);
             igTableNextColumn();
-            reg_field(ui, computer, Register::Counter, "Аккамулятор. Основной регистр с данными.");
+            reg_field(ui, computer, Register::Counter, "Аккумулятор. Основной регистр с данными.");
             igTableNextColumn();
             reg_field(ui, computer, Register::CommandCounter, "Счетчик команд. Указывает на текущую выполняюмую команду.");
             igEndTable()
