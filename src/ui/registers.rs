@@ -42,7 +42,7 @@ impl Tool for RegistersTool {
             igTableNextColumn();
             reg_field(ui, computer, Register::Counter, "Аккумулятор. Основной регистр с данными.");
             igTableNextColumn();
-            reg_field(ui, computer, Register::CommandCounter, "Счетчик команд. Указывает на текущую выполняюмую команду.");
+            reg_field(ui, computer, Register::CommandCounter, "Счетчик команд. Указывает на текущую выполняемую команду.");
             igEndTable()
         }
 
