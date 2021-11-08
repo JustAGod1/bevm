@@ -180,31 +180,42 @@ fn csv_converter(ui: &Ui, state: &mut GuiState, max_len: usize) {
 
 fn latex_converter(ui: &Ui, state: &mut GuiState, max_len: usize) {
     let text = "Сохраняет трассировку в LaTeX\n\n\
-    Используются пекеджи: multirow, babel и geometry.\n\n";
+    Используются пекеджи: multirow, babel, geometry и longtable.\n\n";
+    let warning = "\nУВАГА!!! В связи с тем, что используется longtable, \
+    если вы компилите прямо через pdflatex, при первой компиляции таблица может быть \
+    отрендерена некорректно (это особенность longtable, никак её не убрать). \
+    Просто запустите pdflatex повторно и всё отрендерится как доктор прописал.\n\
+    Те, кто пользуется make'ом или latexmk могут спать спокойно. \nСпасибо за внимание!";
 
     ui.text_wrapped(ImString::new(text).as_ref());
     if ui.button(im_str!("Погнали!"), [160.0, 30.0]) {
         let trace = perform_tracing(&mut state.computer, max_len);
 
         let mut content = String::from("\\documentclass{article}\n\
-        \\usepackage{multirow}\n\
+        \\usepackage{multirow,longtable}\n\
         \\usepackage[margin=1.5cm]{geometry}\n\
         \\usepackage[english,russian]{babel}\n\
         \\begin{document}\n\
-        \\begin{table}[h]\n\
-        \t\\centering\n\
-        \t\\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|}\n\
-        \t\t\\hline\n\
-        \t\t\\multicolumn{2}{|c|}{Выполняемая команда} & \n\
-        \t\t\\multicolumn{6}{|c|}{Содержимое регистров после выполнения команды} & \n\
-        \t\t\\multicolumn{2}{|c|}{Изменившаяся ячейка} \\\\\n\
-        \t\t\\hline\n\
-        \t\tАдрес & Код & СК & РА & РК & РД & А & C & Адрес & Новый код \\\\\n\
-        \t\t\\hline\n");
+        \\begin{longtable}{|c|c|c|c|c|c|c|c|c|c|}\n\
+        \t\\caption{Таблица трассировки} \\\\ \n\
+        \t\\hline\n\
+        \t\\multicolumn{2}{|c|}{Выполняемая команда} & \n\
+        \t\\multicolumn{6}{|c|}{Содержимое регистров после выполнения команды} & \n\
+        \t\\multicolumn{2}{|c|}{Изменившаяся ячейка} \\\\\n\
+        \t\\hline\n\
+        \tАдрес & Код & СК & РА & РК & РД & А & C & Адрес & Новый код \\\\\n\
+        \t\\hline\n\
+        \t\\endfirsthead\n\
+        \t\\hline\n\
+        \tАдрес & Код & СК & РА & РК & РД & А & C & Адрес & Новый код \\\\\n\
+        \t\\hline\n\
+        \t\\endhead\n\
+        \t\\hline\n\
+        \t\\endfoot\n");
 
         for x in trace {
             // Address
-            content.push_str(format!("\t\t{:0>3X} & ", x.pos).as_str());
+            content.push_str(format!("\t{:0>3X} & ", x.pos).as_str());
             // Code
             content.push_str(format!("{:0>4X} & ", x.code).as_str());
 
@@ -230,14 +241,13 @@ fn latex_converter(ui: &Ui, state: &mut GuiState, max_len: usize) {
                 content.push_str("& \\\\\n")
             }
 
-            content.push_str("\t\t\\hline\n");
+            content.push_str("\t\\hline\n");
         }
-        content.push_str("\t\\end{tabular}\n\
-        \t\\caption{Таблица трассировки}\n\
-        \\end{table}\n\
+        content.push_str("\\end{longtable}\n\
         \\end{document}\n");
         write_to_file(content.as_str(), "tex", state);
     }
+    ui.text_wrapped(ImString::new(warning).as_ref());
 }
 
 impl Tool for TraceTool {
