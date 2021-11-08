@@ -327,7 +327,9 @@ impl Computer {
     }
 
     pub fn micro_step(&mut self) -> ExecutionResult {
-        let cmd = parse(self.mc_memory.borrow_mut().data.get(self.registers.r_micro_command_counter as usize).unwrap().get());
+        let opcode = self.mc_memory.borrow_mut().data.get(self.registers.r_micro_command_counter as usize).unwrap().get();
+        let cmd = parse(opcode);
+        self.registers.r_micro_command = opcode;
         let result = cmd.run(self);
         if !matches!(result, ExecutionResult::JUMPED) {
             self.registers.r_micro_command_counter += 1;
