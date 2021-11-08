@@ -129,19 +129,24 @@ pub fn parse_file<T: Read, I: CommandInfo, P: Parser<I>>(
             builder.push_str(format!("{:X}", variables.get(name.as_str()).unwrap()).as_str());
         }
 
-        if let Ok(parsed) = u16::from_str_radix(builder.as_str().trim(), 16) {
-            result.push((pos, parsed))
-        } else {
-            if !parser.supports_rev_parse() {
-                return Err(format!("Ошибка в строке {}. Не могу распарсить число {}.", line, builder));
-            }
+        let str = builder.as_str();
 
-            let r = parser.rev_parse(builder.as_str());
-
-            match r {
+        if parser.supports_rev_parse() {
+            match parser.rev_parse(str) {
                 Ok(v) => result.push((pos, v)),
-                Err(e) => return Err(format!("Ошибка в строке {}. Не могу распарсить выражение {}. Ошибка: {}", line, builder, e))
+                Err(e) => {
+                    match u16::from_str_radix(str, 16) {
+                        Ok(v) => result.push((pos, v)),
+                        Err(_) => return Err(format!("Ошибка в строке {}({}): {}", line, str, e))
+                    }
+                }
             }
+        } else {
+            match u16::from_str_radix(str, 16) {
+                Ok(v) => result.push((pos, v)),
+                Err(_) => return Err(format!("Ошибка в строке {}({}): Не могу распарсить число.", line, str))
+            }
+
         }
 
     }
