@@ -99,7 +99,7 @@ pub fn parse_file<T: Read, I: CommandInfo, P: Parser<I>>(
         let mut var = false;
 
         for x in cmd.chars() {
-            if (x == ' ' || x == '%') && var {
+            if !is_variable_name_char(x) && var {
                 if !variables.contains_key(name.as_str()) {
                     return Err(format!("Ошибка в строке {}. Не могу найти переменную {}.", line, name));
                 }
@@ -160,6 +160,11 @@ enum DataLine<'a> {
     Command(&'a str, Option<&'a str>),
 }
 
+fn is_variable_name_char(ch: char) -> bool {
+    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9')
+}
+
+
 // Да я притащил либу для парсинга простой хуйни
 fn parse_line(line: &str) -> Option<DataLine> {
     let line = line.find_substring("#").map_or(line, |p| { &line[0..p] }).trim();
@@ -173,7 +178,7 @@ fn parse_line(line: &str) -> Option<DataLine> {
     }
 
     fn operand(input: &str) -> IResult<&str, &str, > {
-        preceded(char('$'), take_till(|c| c == ' '))(input)
+        preceded(char('$'), take_while(|c| is_variable_name_char(c)))(input)
     }
 
     fn command(input: &str) -> IResult<&str, &str> {
