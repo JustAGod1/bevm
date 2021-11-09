@@ -15,7 +15,7 @@ use std::process::Command;
 pub struct TraceTool {
     converter: usize,
     tracer: usize,
-    converters: [(&'static str, fn(ui: &Ui, state: &RefCell<&mut GuiState>, tracing: &mut dyn FnMut() -> Tracing)); 2],
+    converters: [(&'static str, fn(ui: &Ui, state: &RefCell<&mut GuiState>, tracing: &mut dyn FnMut() -> Tracing)); 3],
     tracers: [(&'static str, fn(computer: &mut Computer, len: usize) -> Tracing); 2],
     max_len: i32,
 }
@@ -26,7 +26,7 @@ impl TraceTool {
             converter: 0,
             tracer: 0,
             tracers: [("Основная память", general_tracing), ("Память МПУ", mc_tracing)],
-            converters: [("CSV", csv_converter), ("HTML", html_converter)],
+            converters: [("CSV", csv_converter), ("HTML", html_converter), ("LaTeX", latex_converter)],
             max_len: 200
         }
     }
@@ -153,6 +153,56 @@ fn enum_chooser<'a, T>(ui: &Ui, name: &str, num: &mut usize, variants: &'a [(&st
         .build_simple(ui, num, variants, &|a| Owned(ImString::new(a.0)));
 
     return &variants.get(*num).unwrap().1
+}
+fn latex_converter(ui: &Ui, state: &RefCell<&mut GuiState>, tracing: &mut dyn FnMut() -> Tracing) {
+    let text = "Сохраняет трассировку в LaTeX\n\n\
+    Используются пекеджи: multirow, babel, geometry и longtable.\n\n";
+    let warning = "\nУВАГА!!! В связи с тем, что используется longtable, \
+    если вы компилите прямо через pdflatex, при первой компиляции таблица может быть \
+    отрендерена некорректно (это особенность longtable, никак её не убрать). \
+    Просто запустите pdflatex повторно и всё отрендерится как доктор прописал.\n\
+    Те, кто пользуется make'ом или latexmk могут спать спокойно. \nСпасибо за внимание!";
+
+    ui.text_wrapped(ImString::new(text).as_ref());
+    if ui.button(im_str!("Погнали!"), [160.0, 30.0]) {
+        let trace: Tracing = tracing();
+
+        let header = trace.header.join(" & ");
+
+        let mut content = format!("\\documentclass{{article}}\n\
+        \\usepackage{{multirow,longtable}}\n\
+        \\usepackage[margin=1.5cm]{{geometry}}\n\
+        \\usepackage[english,russian]{{babel}}\n\
+        \\begin{{document}}\n\
+        \\begin{{longtable}}{{|c|c|c|c|c|c|c|c|c|c|}}\n\
+        \t\\caption{{Таблица трассировки}} \\\\ \n\
+        \t\\hline\n\
+        \t\\multicolumn{{2}}{{|c|}}{{Выполняемая команда}} & \n\
+        \t\\multicolumn{{6}}{{|c|}}{{Содержимое регистров после выполнения команды}} & \n\
+        \t\\multicolumn{{2}}{{|c|}}{{Изменившаяся ячейка}} \\\\\n\
+        \t\\hline\n\
+        \t{} \\\\\n\
+        \t\\hline\n\
+        \t\\endfirsthead\n\
+        \t\\hline\n\
+        \t{} \\\\\n\
+        \t\\hline\n\
+        \t\\endhead\n\
+        \t\\hline\n\
+        \t\\endfoot\n", header, header);
+
+        for x in trace.tracing {
+
+            content.push_str(x.join(" & ").as_str());
+            content.push_str("\\\\\n");
+
+            content.push_str("\t\\hline\n");
+        }
+        content.push_str("\\end{longtable}\n\
+        \\end{document}\n");
+        write_to_file(content.as_str(), "tex", &mut state.borrow_mut().popup_manager);
+    }
+    ui.text_wrapped(ImString::new(warning).as_ref());
 }
 
 impl Tool for TraceTool {
