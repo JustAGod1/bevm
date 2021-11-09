@@ -322,6 +322,10 @@ impl Computer {
         )
     }
 
+    pub fn clear_logs(&mut self) {
+        self.logs.clear();
+    }
+
     pub fn logs(&self) -> &Vec<LogEntry> {
         &self.logs
     }

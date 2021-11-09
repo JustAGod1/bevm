@@ -1,5 +1,5 @@
 use crate::model::Computer;
-use imgui::{Ui, im_str, ChildWindow, MenuItem, Io};
+use imgui::{Ui, im_str, ChildWindow, MenuItem, Io, StyleColor};
 use crate::ui::window::Tool;
 use crate::ui::gui::{PopupManager, Gui, GuiState};
 
@@ -29,6 +29,11 @@ impl Tool for LogTool {
                 }
                 t.end(ui);
             }
+            let token = ui.push_style_color(StyleColor::Button, [0.0,0.0,0.0,0.0]);
+            if ui.button(im_str!("Очистить"), [0.0, 0.0]) {
+                gui.computer.clear_logs();
+            }
+            token.pop(ui);
         });
 
         let mut last_idx = 0u16;
