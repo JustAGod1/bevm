@@ -1,6 +1,8 @@
+use std::borrow::Cow::{Borrowed, Owned};
+use std::cell::RefCell;
 use crate::ui::window::Tool;
 use imgui::{Ui, im_str, Io, ImStr, ImString, ComboBox, Selectable};
-use crate::ui::gui::GuiState;
+use crate::ui::gui::{GuiState, PopupManager};
 use crate::ui::popup::PopupMessage;
 use std::fs::OpenOptions;
 use imgui::sys::igGetFontTexUvWhitePixel;
@@ -11,22 +13,27 @@ use crate::model::{Registers, Computer};
 use std::process::Command;
 
 pub struct TraceTool {
-    format: usize,
-    converters: [(&'static str, fn(ui: &Ui, state: &mut GuiState, usize)); 2],
+    converter: usize,
+    tracer: usize,
+    converters: [(&'static str, fn(ui: &Ui, state: &RefCell<&mut GuiState>, tracing: &mut dyn FnMut() -> Tracing)); 2],
+    tracers: [(&'static str, fn(computer: &mut Computer, len: usize) -> Tracing); 2],
     max_len: i32,
 }
 
 impl TraceTool {
     pub fn new() -> TraceTool {
         TraceTool {
-            format: 0,
+            converter: 0,
+            tracer: 0,
+            tracers: [("Основная память", general_tracing), ("Память МПУ", mc_tracing)],
             converters: [("CSV", csv_converter), ("HTML", html_converter)],
             max_len: 200
         }
     }
 }
 
-fn html_converter(ui: &Ui, state: &mut GuiState, max_len: usize) {
+fn html_converter(ui: &Ui, state: &RefCell<&mut GuiState>, tracing: &mut dyn FnMut() -> Tracing)
+{
     let text = "Сохраняет трассировку в формате HTML\n\n\
     Это удобно когда вам нужно быстро на нее посмотреть, но неудобно когда нужно ее куда то вставить.\n\n";
 
@@ -46,61 +53,33 @@ fn html_converter(ui: &Ui, state: &mut GuiState, max_len: usize) {
     }
 
 
-    let trace = perform_tracing(&mut state.computer, max_len);
+    let trace = tracing();
     let mut content = String::new();
 
-    for x in trace {
+    content.push_str("\t<tr>");
+
+    for x in trace.header {
+        content.push_str("\t\t<th>");
+        content.push_str(x.as_str());
+        content.push_str("</th>\n");
+    }
+
+    content.push_str("\t</tr>");
+
+    for x in trace.tracing {
         content.push_str("\t<tr>");
 
-        // Address
-        content.push_str(format!("\t\t<td>{:0>3X}</td>", x.pos).as_str());
-        // Code
-        content.push_str(format!("\t\t<td>{:0>4X}</td>", x.code).as_str());
-
-        // СК
-        content.push_str(format!("\t\t<td>{:0>4X}</td>", x.registers.r_command_counter).as_str());
-        // РА
-        content.push_str(format!("\t\t<td>{:0>4X}</td>", x.registers.r_address).as_str());
-        // РК
-        content.push_str(format!("\t\t<td>{:0>4X}</td>", x.registers.r_command).as_str());
-        // РД
-        content.push_str(format!("\t\t<td>{:0>4X}</td>", x.registers.r_data).as_str());
-        // А
-        content.push_str(format!("\t\t<td>{:0>4X}</td>", x.registers.r_counter).as_str());
-        // С
-        content.push_str(format!("\t\t<td>{}</td>", if x.registers.get_overflow() {'1'} else {'0'}).as_str());
-
-        if let Some((pos, nv)) = x.difference {
-            content.push_str(format!("\t\t<td>{:0>3X}</td>", pos).as_str());
-            content.push_str(format!("\t\t<td>{:0>4X}</td>", nv).as_str());
-        } else {
-            content.push_str("\t\t<td colspan=2></td>");
+        for s in x {
+            content.push_str(format!("\t\t<td>{}</td>", s).as_str());
         }
         content.push_str("\t</tr>")
     }
 
     let formatted = format!("<table border=1> \n\
-    <tr> \n\
-        <td colspan=2>Выполняемая программа</td> \n\
-        <td colspan=6>Содержимое регистров процессора после выполнения команды</td> \n\
-        <td colspan=2>Ячейка, содержимое которой изменилось после выполнениия Программы</td> \n\
-    </tr> \n\
-    <tr> \n\
-        <td>Адрес</td> \n\
-        <td>Код</td> \n\
-        <td>СК</td> \n\
-        <td>РА</td> \n\
-        <td>РК</td> \n\
-        <td>РД</td> \n\
-        <td>А</td> \n\
-        <td>С</td> \n\
-        <td>Адрес</td> \n\
-        <td>Новый код</td> \n\
-    </tr> \n\
     {} \n\
     </table>", content);
 
-    let name = write_to_file(formatted.as_str(), "html", state);
+    let name = write_to_file(formatted.as_str(), "html", &mut state.borrow_mut().popup_manager);
 
     if name.is_none() || !open { return; }
 
@@ -111,7 +90,7 @@ fn html_converter(ui: &Ui, state: &mut GuiState, max_len: usize) {
         "macos" => Command::new("sh").arg("-c").arg(format!("open {}", filename)).output(),
         "windows" => Command::new("cmd").arg("/c").arg(filename).output(),
         _ => {
-            state.popup_manager.open(PopupMessage::new("Упс", format!("Ваша операционная система \"{}\" мне неизвестна. Не смогу тут открыть трассировку.", std::env::consts::OS)));
+            state.borrow_mut().popup_manager.open(PopupMessage::new("Упс", format!("Ваша операционная система \"{}\" мне неизвестна. Не смогу тут открыть трассировку.", std::env::consts::OS)));
             return;
         }
     };
@@ -120,11 +99,11 @@ fn html_converter(ui: &Ui, state: &mut GuiState, max_len: usize) {
         Ok(o) => {
             if o.status.code().unwrap_or(1) != 0 {
                 String::from_utf8_lossy(o.stderr.as_slice());
-                state.popup_manager.open(PopupMessage::new("Ошибочка", format!("Не смог открыть файл.\n{}\n{}", String::from_utf8_lossy(o.stderr.as_slice()), String::from_utf8_lossy(o.stdout.as_slice()))))
+                state.borrow_mut().popup_manager.open(PopupMessage::new("Ошибочка", format!("Не смог открыть файл.\n{}\n{}", String::from_utf8_lossy(o.stderr.as_slice()), String::from_utf8_lossy(o.stdout.as_slice()))))
             }
         },
         Err(e) => {
-            state.popup_manager.open(PopupMessage::new("Ошибочка", format!("Не смог открыть файл: {}", e.to_string())))
+            state.borrow_mut().popup_manager.open(PopupMessage::new("Ошибочка", format!("Не смог открыть файл: {}", e.to_string())))
         }
     }
 
@@ -133,7 +112,7 @@ fn html_converter(ui: &Ui, state: &mut GuiState, max_len: usize) {
 
 }
 
-fn csv_converter(ui: &Ui, state: &mut GuiState, max_len: usize) {
+fn csv_converter(ui: &Ui, state: &RefCell<&mut GuiState>, tracing: &mut dyn FnMut() -> Tracing) {
     let text = "Сохраняет трассировку в формате CSV\n\n\
     Разделитель: таб\n\
     Кодировка: UTF-8\n\
@@ -142,42 +121,39 @@ fn csv_converter(ui: &Ui, state: &mut GuiState, max_len: usize) {
 
     ui.text_wrapped(ImString::new(text).as_ref());
     if ui.button(im_str!("Погнали!"), [160.0, 30.0]) {
-        let trace = perform_tracing(&mut state.computer, max_len);
+        let trace = tracing();
 
-        let mut content = String::from("\"Адрес\"\t\"Код\"\t\"СК\"\t\"РА\"\t\"РК\"\t\"РД\"\t\"А\"\t\"С\"\t\"Адрес\"\t\"Новый код\"\n");
-
-        for x in trace {
-            // Address
-            content.push_str(format!("\"{:0>3X}\"", x.pos).as_str()); content.push('\t');
-            // Code
-            content.push_str(format!("\"{:0>4X}\"", x.code).as_str()); content.push('\t');
-
-            // СК
-            content.push_str(format!("\"{:0>4X}\"", x.registers.r_command_counter).as_str()); content.push('\t');
-            // РА
-            content.push_str(format!("\"{:0>4X}\"", x.registers.r_address).as_str()); content.push('\t');
-            // РК
-            content.push_str(format!("\"{:0>4X}\"", x.registers.r_command).as_str()); content.push('\t');
-            // РД
-            content.push_str(format!("\"{:0>4X}\"", x.registers.r_data).as_str()); content.push('\t');
-            // А
-            content.push_str(format!("\"{:0>4X}\"", x.registers.r_counter).as_str()); content.push('\t');
-            // С
-            content.push(if x.registers.get_overflow() {'1'} else {'0'}); content.push('\t');
-
-            if let Some((pos, nv)) = x.difference {
-                content.push_str(format!("\"{:0>3X}\"", pos).as_str()); content.push('\t');
-                content.push_str(format!("\"{:0>4X}\"", nv).as_str());
-            }
-
-            content.push('\n');
+        let mut content = String::new();
+        for x in trace.header.iter().map(|a| format!("{}", a)) {
+            content.push_str(x.as_str());
+            content.push('\t');
         }
 
-        write_to_file(content.as_str(), "csv", state);
+        for x in trace.tracing {
+            content.push('\n');
+            for x in x.iter().map(|a| format!("{}", a)) {
+                content.push('"');
+                content.push_str(x.as_str());
+                content.push('"');
+                content.push('\t');
+            }
+        }
+
+        write_to_file(content.as_str(), "csv", &mut state.borrow_mut().popup_manager);
     }
 
 }
 
+
+fn enum_chooser<'a, T>(ui: &Ui, name: &str, num: &mut usize, variants: &'a [(&str, T)]) -> &'a T {
+    let title = variants.get(*num).unwrap().0;
+
+    ComboBox::new(ImString::new(name).as_ref())
+        .preview_value(ImString::new(title).as_ref())
+        .build_simple(ui, num, variants, &|a| Owned(ImString::new(a.0)));
+
+    return &variants.get(*num).unwrap().1
+}
 
 impl Tool for TraceTool {
     fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
@@ -190,29 +166,24 @@ impl Tool for TraceTool {
         ui.input_int(im_str!("###max_len"), &mut self.max_len).build();
         width_t.pop(ui);
         self.max_len = self.max_len.clamp(0, 200);
+
         let text = "Формат таблицы:";
         ui.text_wrapped(ImString::new(text).as_ref());
+        let converter = enum_chooser(ui, "###converter", &mut self.converter, &self.converters);
 
-        let title = self.converters[self.format].0;
-        ComboBox::new(im_str!("###selectable"))
-            .preview_value(ImString::new(title).as_ref())
-            .build(ui, || {
-            for i in 0 .. self.converters.len() {
-                if Selectable::new(ImString::new(self.converters[i].0).as_ref())
-                    .selected(i == self.format)
-                    .build(ui)
-                {
-                    self.format = i;
-                }
-            }
-        });
+        let text = "Вид трассировки:";
+        ui.text_wrapped(ImString::new(text).as_ref());
+        let tracer = enum_chooser(ui, "###tracer", &mut self.tracer, &self.tracers);
 
-        self.converters[self.format].1(ui, state, self.max_len as usize)
+
+
+        let cell = RefCell::new(state);
+        converter(ui, &cell, &mut || tracer(&mut cell.borrow_mut().computer, self.max_len as usize))
 
     }
 }
 
-fn write_to_file(s: &str, postfix: &str, state: &mut GuiState) -> Option<String> {
+fn write_to_file(s: &str, postfix: &str, popup_manager: &mut PopupManager) -> Option<String> {
     let filename = match nfd::open_pick_folder(None) {
         Ok(r) => match r {
             nfd::Response::Okay(f) => {
@@ -221,7 +192,7 @@ fn write_to_file(s: &str, postfix: &str, state: &mut GuiState) -> Option<String>
             _ => { return None; }
         }
         Err(e) => {
-            state.popup_manager.open(PopupMessage::new("Ошибка выбора папки", format!("Не могу открыть окно выбора папки: {}", e.to_string())));
+            popup_manager.open(PopupMessage::new("Ошибка выбора папки", format!("Не могу открыть окно выбора папки: {}", e.to_string())));
             return None;
         }
     };
@@ -235,17 +206,17 @@ fn write_to_file(s: &str, postfix: &str, state: &mut GuiState) -> Option<String>
         .open(filename.as_str());
 
     if let Err(e) = f {
-        state.popup_manager.open(PopupMessage::new("Ошибка записи", format!("Не могу открыть файл \"{}\": {}", filename, e.to_string())));
+        popup_manager.open(PopupMessage::new("Ошибка записи", format!("Не могу открыть файл \"{}\": {}", filename, e.to_string())));
         return None;
     }
     let mut f = f.unwrap();
 
     if let Err(e) = f.write(s.as_bytes()) {
-        state.popup_manager.open(PopupMessage::new("Ошибка записи", format!("Не могу записать в файл \"{}\": {}", filename, e.to_string())));
+        popup_manager.open(PopupMessage::new("Ошибка записи", format!("Не могу записать в файл \"{}\": {}", filename, e.to_string())));
         return None;
     }
 
-    state.popup_manager.open(PopupMessage::new("Успех", format!("Успешно сохранил трассировку в файл \"{}\"", filename)));
+    popup_manager.open(PopupMessage::new("Успех", format!("Успешно сохранил трассировку в файл \"{}\"", filename)));
 
     Some(filename)
 
@@ -258,8 +229,52 @@ struct TraceElement {
     difference: Option<(usize, u16)>,
 }
 
+struct Tracing {
+    pub header: Vec<String>,
+    pub tracing: Vec<Vec<String>>
+}
 
-fn perform_tracing(computer: &mut Computer, len: usize) -> Vec<TraceElement> {
+fn mc_tracing(computer: &mut Computer, len: usize) -> Tracing {
+    let mut steps_left = len;
+
+    let mut result = Vec::new();
+
+    while steps_left > 0 && computer.registers.r_command != 0xF000 {
+        let pos = computer.registers.r_micro_command_counter;
+        let code = computer.mc_memory.borrow().data.get(pos as usize).unwrap().get();
+
+        computer.registers.set_execute_by_tick(false);
+        computer.registers.set_lever(false);
+        computer.registers.set_program_mode(false);
+
+        computer.micro_step();
+
+        result.push(
+            vec![
+                format!("{:0>3X}", pos),
+                format!("{:0>4X}", code),
+                format!("{:0>3X}", computer.registers.r_command_counter),
+                format!("{:0>3X}", computer.registers.r_address),
+                format!("{:0>4X}", computer.registers.r_command),
+                format!("{:0>4X}", computer.registers.r_data),
+                format!("{:0>4X}", computer.registers.r_counter),
+                if computer.registers.get_overflow() { "1".to_owned() } else { "0".to_owned() },
+                format!("{:0>4X}", computer.registers.r_buffer),
+                if computer.registers.get_negative() { "1".to_owned() } else { "0".to_owned() },
+                if computer.registers.get_null() { "1".to_owned() } else { "0".to_owned() },
+                format!("{:0>3X}", computer.registers.r_micro_command_counter)
+            ]
+        );
+
+        steps_left -= 1;
+    }
+
+    Tracing {
+        header: vec!["СчМК до выборки МК", "ВМК", "СК", "РА", "РК", "РД", "А", "С", "БР", "N", "Z", "СчМК"].iter().map(|a| a.to_owned().to_owned()).collect(),
+        tracing: result
+    }
+}
+fn general_tracing(computer: &mut Computer, len: usize) -> Tracing {
     let mut steps_left = len;
 
     let mut result = Vec::new();
@@ -282,17 +297,29 @@ fn perform_tracing(computer: &mut Computer, len: usize) -> Vec<TraceElement> {
             }
         }
 
-        result.push(
-            TraceElement {
-                pos,
-                code,
-                registers: computer.registers.clone(),
-                difference: diff
+        let mut line = vec![
+            format!("{:0>3X}", pos),
+            format!("{:0>4X}", code),
+            format!("{:0>4X}", computer.registers.r_command_counter),
+            format!("{:0>4X}", computer.registers.r_address),
+            format!("{:0>4X}", computer.registers.r_command),
+            format!("{:0>4X}", computer.registers.r_data),
+            format!("{:0>4X}", computer.registers.r_counter),
+            if computer.registers.get_overflow() { "1".to_owned() } else { "0".to_owned() },
+        ];
+        for i in 0..mem_before.len() {
+            if computer.general_memory.borrow().data.get(i).unwrap().get() != mem_before.get(i).unwrap().get() {
+                line.push(format!("{:0>3X}", i));
+                line.push(format!("{:0>4X}", computer.general_memory.borrow().data.get(i).unwrap().get()));
             }
-        );
+        }
+        result.push(line);
 
         steps_left -= 1;
     }
 
-    result
+    Tracing {
+        header: vec!["Адресс", "Код", "СК", "РА", "РК", "РД", "А", "С", "Адрес", "Новый код"].iter().map(|a| a.to_owned().to_owned()).collect(),
+        tracing: result
+    }
 }
