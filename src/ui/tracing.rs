@@ -1,16 +1,19 @@
 use std::borrow::Cow::{Borrowed, Owned};
 use std::cell::RefCell;
 use crate::ui::window::Tool;
-use imgui::{Ui, im_str, Io, ImStr, ImString, ComboBox, Selectable};
+use imgui::{Ui, im_str, Io, ImStr, ImString, ComboBox, Selectable, TreeNode};
 use crate::ui::gui::{GuiState, PopupManager};
 use crate::ui::popup::PopupMessage;
 use std::fs::OpenOptions;
 use imgui::sys::igGetFontTexUvWhitePixel;
 use sdl2::mouse::SystemCursor::No;
-use std::io::Write;
+use std::io::{Read, Write};
 use crate::parse::mc::ExecutionResult;
 use crate::model::{Registers, Computer};
-use std::process::Command;
+use std::process::{Command, ExitStatus};
+use std::time::Duration;
+use imgui::TreeNodeId::Str;
+use crate::ui::open_in_app;
 
 pub struct TraceTool {
     converter: usize,
@@ -85,30 +88,9 @@ fn html_converter(ui: &Ui, state: &RefCell<&mut GuiState>, tracing: &mut dyn FnM
 
     let filename = name.unwrap();
 
-    let cmd_result = match std::env::consts::OS {
-        "linux" => Command::new("sh").arg("-c").arg(format!("xdg-open {}", filename)).output(),
-        "macos" => Command::new("sh").arg("-c").arg(format!("open {}", filename)).output(),
-        "windows" => Command::new("cmd").arg("/c").arg(filename).output(),
-        _ => {
-            state.borrow_mut().popup_manager.open(PopupMessage::new("Упс", format!("Ваша операционная система \"{}\" мне неизвестна. Не смогу тут открыть трассировку.", std::env::consts::OS)));
-            return;
-        }
-    };
-
-    match cmd_result {
-        Ok(o) => {
-            if o.status.code().unwrap_or(1) != 0 {
-                String::from_utf8_lossy(o.stderr.as_slice());
-                state.borrow_mut().popup_manager.open(PopupMessage::new("Ошибочка", format!("Не смог открыть файл.\n{}\n{}", String::from_utf8_lossy(o.stderr.as_slice()), String::from_utf8_lossy(o.stdout.as_slice()))))
-            }
-        },
-        Err(e) => {
-            state.borrow_mut().popup_manager.open(PopupMessage::new("Ошибочка", format!("Не смог открыть файл: {}", e.to_string())))
-        }
+    if let Err(s) = open_in_app(filename.as_str()) {
+        state.borrow_mut().popup_manager.open(PopupMessage::new("Упс", format!("Не удалось открыть файл с трассировкой: {}", s)))
     }
-
-
-
 
 }
 
@@ -202,7 +184,7 @@ fn latex_converter(ui: &Ui, state: &RefCell<&mut GuiState>, tracing: &mut dyn Fn
         \\end{document}\n");
         write_to_file(content.as_str(), "tex", &mut state.borrow_mut().popup_manager);
     }
-    ui.text_wrapped(ImString::new(warning).as_ref());
+    TreeNode::new(Str(im_str!("Предупреждение"))).build(ui, || ui.text_wrapped(ImString::new(warning).as_ref()));
 }
 
 impl Tool for TraceTool {
@@ -212,6 +194,27 @@ impl Tool for TraceTool {
             ;
 
         ui.text_wrapped(ImString::new(text).as_ref());
+
+        TreeNode::new(Str(im_str!("Подробности"))).build(ui, || {
+            let text =
+                "Выполняет программу шаг за шагом так же, как если бы вы нажимали кнопку \"Большой шаг\" и записывали бы это в табличку.\n\n\
+                Прямо следует из этого факта, что трассировка будет выполняться начиная с текущего значения регистра СК\n\n\
+                БЭВМ будет выполнять команду за командой до тех пор пока либо не достигнет максимальной длинны таблицы, либо в регистре РК не появится значение F000\
+                , что, как правило, означает, что выполнилась команда HLT";
+
+            ui.text_wrapped(ImString::new(text).as_ref());
+            ui.separator();
+            let text =
+                "Таким образом, если вы хотите выполнить трассировку программы вам стоит:\n\
+                1. Сбросить ЭВМ \n\
+                2. Загрузить программу \n\
+                3. Установить регистр СК в начало программы \n\
+                4. Выполнить трассировку";
+
+            ui.text_wrapped(ImString::new(text).as_ref());
+            ui.separator();
+        });
+
         let width_t = ui.push_item_width(160.0);
         ui.input_int(im_str!("###max_len"), &mut self.max_len).build();
         width_t.pop(ui);
@@ -289,7 +292,7 @@ fn mc_tracing(computer: &mut Computer, len: usize) -> Tracing {
 
     let mut result = Vec::new();
 
-    while steps_left > 0 && computer.registers.r_command != 0xF000 {
+    while steps_left > 0 {
         let pos = computer.registers.r_micro_command_counter;
         let code = computer.mc_memory.borrow().data.get(pos as usize).unwrap().get();
 
@@ -316,6 +319,8 @@ fn mc_tracing(computer: &mut Computer, len: usize) -> Tracing {
             ]
         );
 
+        if computer.registers.r_command == 0xF000 { break; }
+
         steps_left -= 1;
     }
 
@@ -329,7 +334,7 @@ fn general_tracing(computer: &mut Computer, len: usize) -> Tracing {
 
     let mut result = Vec::new();
 
-    while steps_left > 0 && computer.registers.r_command != 0xF000 {
+    while steps_left > 0 {
         let pos = computer.registers.r_command_counter;
         let code = computer.general_memory.borrow().data.get(pos as usize).unwrap().get();
         let mem_before = computer.general_memory.borrow().data.clone();
@@ -366,6 +371,8 @@ fn general_tracing(computer: &mut Computer, len: usize) -> Tracing {
         result.push(line);
 
         steps_left -= 1;
+
+        if computer.registers.r_command == 0xF000 { break; }
     }
 
     Tracing {
