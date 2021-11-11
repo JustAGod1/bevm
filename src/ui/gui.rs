@@ -24,11 +24,12 @@ use crate::ui::registers::RegistersTool;
 use crate::ui::status::StatusTool;
 use crate::ui::window::{Tool, WindowTool};
 
-use self::imgui::{Context, FontConfig, FontGlyphRanges, FontId, FontSource, MenuItem, WindowFlags, Io};
+use self::imgui::{Context, FontConfig, FontGlyphRanges, FontId, FontSource, MenuItem, WindowFlags, Io, Style};
 use self::imgui::sys::ImGuiKey_Backspace;
 use self::sdl2::keyboard::Scancode;
 use crate::ui::tracing::TraceTool;
 use std::cell::Cell;
+use self::sdl2::Sdl;
 
 pub struct PopupManager {
     popup_delayed: Vec<Box<dyn Popup>>,
@@ -51,6 +52,8 @@ pub struct GuiState {
     pub last_file_general: Option<String>,
     pub last_file_mc: Option<String>,
     pub computer: Computer,
+    pub editor_enabled: bool,
+    pub theme_requested: Option<Theme>,
     pub popup_manager: PopupManager,
     pub current_command: Option<Box<dyn CommandInfo>>,
 }
@@ -58,6 +61,8 @@ pub struct GuiState {
 impl GuiState {
     pub fn new(computer: Computer) -> GuiState {
         GuiState {
+            editor_enabled: false,
+            theme_requested: None,
             last_file_general: None,
             last_file_mc: None,
             computer,
@@ -71,6 +76,12 @@ pub struct Gui {
     popup: Option<Box<dyn Popup>>,
     content: LayoutTool,
     state: GuiState,
+}
+
+pub enum Theme {
+    Dark,
+    Light,
+    Classic,
 }
 
 impl Gui {
@@ -89,7 +100,7 @@ impl Gui {
                                 250, 0,
                             )
                                 .append("Основная память", CellsTool::new((&computer.general_memory).clone(), |c| c.registers.r_command_counter))
-                                .append("Память МПУ", CellsTool::new((&computer.mc_memory).clone(), |c| c.registers.r_micro_command_counter as u16))
+                                .append("Память МПУ", CellsTool::new((&computer.mc_memory).clone(), |c| c.registers.r_micro_command_counter as u16)),
                         )
                         .append(
                             0,
@@ -106,7 +117,7 @@ impl Gui {
                                                     300, 0,
                                                     "Регистры",
                                                     RegistersTool::new(),
-                                                )
+                                                ),
                                             )
                                             .append(
                                                 0,
@@ -114,9 +125,9 @@ impl Gui {
                                                     0, 0,
                                                     "Разбор регистра статуса (РС)",
                                                     StatusTool::new(),
-                                                )
+                                                ),
                                             ),
-                                    )
+                                    ),
                                 )
                                 .append(
                                     0,
@@ -132,7 +143,7 @@ impl Gui {
                                                             0, 135,
                                                             "Управление исполнением",
                                                             SmartControlsTool::new(),
-                                                        )
+                                                        ),
                                                     )
                                                     .append(
                                                         0,
@@ -140,10 +151,10 @@ impl Gui {
                                                             0, 0,
                                                             "Внешние устройства",
                                                             IOTool::new(),
-                                                        )
+                                                        ),
                                                     ),
                                             )
-                                                .append("Таблица трассировки", TraceTool::new())
+                                                .append("Таблица трассировки", TraceTool::new()),
                                         )
                                         .append(
                                             315,
@@ -154,9 +165,9 @@ impl Gui {
                                                         0, 0,
                                                         "Информация о команде",
                                                         CommandHighlightTool::new(),
-                                                    )
+                                                    ),
                                                 )
-                                                .size(315, 0)
+                                                .size(315, 0),
                                         )
                                         .append(
                                             0,
@@ -165,10 +176,10 @@ impl Gui {
                                                 .append("Синтаксис", HelpTool::new(include_str!("../help/file.txt")))
                                                 .append("Шпора", HelpTool::new(include_str!("../help/cheatsheet.txt")))
                                                 .append("Нотация", HelpTool::new(include_str!("../help/notation.txt")))
-                                                .append("Да как остановить епт", HelpTool::new(include_str!("../help/run_and_stop.txt")))
-                                        )
-                                )
-                        )
+                                                .append("Да как остановить епт", HelpTool::new(include_str!("../help/run_and_stop.txt"))),
+                                        ),
+                                ),
+                        ),
                 )
                 .append(
                     200,
@@ -176,7 +187,7 @@ impl Gui {
                         "bottom",
                         0, 200,
                     )
-                        .append("Логи", LogTool::new())
+                        .append("Логи", LogTool::new()),
                 ),
             state: GuiState::new(computer),
         };
@@ -223,6 +234,7 @@ impl Gui {
         let font = Self::init_font(&mut imgui);
 
         imgui.io_mut().key_map[ImGuiKey_Backspace as usize] = Scancode::Backspace as u32;
+        imgui.style_mut().use_classic_colors();
 
         let mut imgui_sdl2 = imgui_sdl2::ImguiSdl2::new(&mut imgui, &window);
 
@@ -261,6 +273,15 @@ impl Gui {
                 }
             }
 
+            if let Some(theme) = &self.state.theme_requested {
+                match theme {
+                    Theme::Dark => { imgui.style_mut().use_dark_colors() }
+                    Theme::Light => { imgui.style_mut().use_light_colors() }
+                    Theme::Classic => { imgui.style_mut().use_classic_colors() }
+                };
+                self.state.theme_requested = None;
+            };
+
             imgui_sdl2.prepare_frame(imgui.io_mut(), &window, &event_pump.mouse_state());
 
             let now = Instant::now();
@@ -273,6 +294,7 @@ impl Gui {
                 &mut *(imgui.io_mut() as *mut Io)
             };
             let ui = imgui.frame();
+
 
             let token = ui.push_font(font);
 
@@ -320,10 +342,14 @@ impl Gui {
             .opened(&mut opened);
 
         window = window.size([sdl_window.size().0 as f32, sdl_window.size().1 as f32], Condition::Always);
-        window = window.position([0.0, 0.0], Condition::Appearing);
         window = window.no_decoration();
         window = window.movable(false);
+        if self.state.editor_enabled {
+            let mut style = ui.clone_style();
+            Window::new(im_str!("Editor")).build(ui, || ui.show_style_editor(&mut style));
+        }
 
+        window = window.position([0.0, 0.0], Condition::Appearing);
 
         if let Some(token) = window.begin(&ui) {
             self.content.draw(ui, io, &mut self.state);

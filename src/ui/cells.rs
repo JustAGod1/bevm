@@ -82,6 +82,8 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> Tool for CellsTool<I
 
         let jump_needed = ui.button(im_str!("Перейти к исполняемой команде"), [0.0, 0.0]);
 
+        let s_token = ui.push_style_var(StyleVar::ChildBorderSize(0.0));
+
         let w_token = ChildWindow::new("cells_inside")
             .always_vertical_scrollbar(true)
             .border(true)
@@ -168,6 +170,7 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> Tool for CellsTool<I
         }
 
         w_token.end(ui);
+        s_token.pop(ui);
     }
 }
 
