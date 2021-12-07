@@ -157,6 +157,7 @@ impl Registers {
 
 }
 
+#[derive(Clone)]
 pub struct Memory<I: CommandInfo,P: Parser<I>> {
     pub parser: P,
     pub data: Vec<MemoryCell>,

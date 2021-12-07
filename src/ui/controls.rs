@@ -1,12 +1,18 @@
-use crate::model::{Computer, Register, Registers};
+use crate::model::{Computer, Memory, Register, Registers};
 use imgui::{Ui, ChildWindow, TreeNode, im_str, ImString, Io, MenuItem};
+use crate::parse::general::{GeneralCommandInfo, GeneralParser};
 use crate::parse::mc::ExecutionResult;
 use crate::ui::gui::{PopupManager, Gui, GuiState};
 use crate::ui::window::Tool;
 use crate::ui::popup::PopupMessage;
 
 pub struct SmartControlsTool {
-    auto_run: bool
+    auto_run: bool,
+    history: Vec<HistoryEntry>
+}
+
+struct HistoryEntry {
+    registers: Registers
 }
 
 impl Tool for SmartControlsTool {
@@ -18,7 +24,19 @@ impl Tool for SmartControlsTool {
 impl SmartControlsTool {
     pub fn new() -> SmartControlsTool {
         SmartControlsTool {
-            auto_run: false
+            auto_run: false,
+            history: vec![]
+        }
+    }
+
+    fn make_history_entry(&mut self, state: &mut GuiState) {
+        let entry = HistoryEntry {
+            registers: state.computer.registers.clone()
+        };
+
+        self.history.push(entry);
+        if self.history.len() > 15 {
+            self.history.remove(0usize);
         }
     }
 
@@ -30,16 +48,16 @@ impl SmartControlsTool {
             }
             tok.end(ui);
         }
-        let computer = &mut state.computer;
 
-        let w = ui.content_region_avail().get(0).unwrap() / 2.0 - 4.0;
+        let w = ui.content_region_avail().get(0).unwrap() / 3.0 - 6.0;
         let h = ui.content_region_avail().get(1).unwrap() / 2.0 - 3.0;
 
         if ui.button(im_str!("Микро шаг"), [w, h]) {
-            computer.registers.set_execute_by_tick(true);
-            computer.registers.set_lever(false);
-            computer.registers.set_program_mode(false);
-            computer.micro_step();
+            self.make_history_entry(state);
+            state.computer.registers.set_execute_by_tick(true);
+            state.computer.registers.set_lever(false);
+            state.computer.registers.set_program_mode(false);
+            state.computer.micro_step();
         }
 
         if ui.is_item_hovered() {
@@ -49,45 +67,69 @@ impl SmartControlsTool {
         ui.same_line(0.0);
 
         if ui.button(im_str!("Большой шаг"), [w,h]) {
-            computer.registers.set_execute_by_tick(false);
-            computer.registers.set_lever(false);
-            computer.registers.set_program_mode(false);
-            while !matches!(computer.micro_step(), ExecutionResult::HALTED) {}
+            self.make_history_entry(state);
+            state.computer.registers.set_execute_by_tick(false);
+            state.computer.registers.set_lever(false);
+            state.computer.registers.set_program_mode(false);
+            while !matches!(state.computer.micro_step(), ExecutionResult::HALTED) {}
         }
         if ui.is_item_hovered() {
             ui.tooltip_text("Устанавливает флаг \"Исполнение\" в 0\nУстанавливает флаг \"Состояние тумблера\" в 0.\nУстанавливается флаг \"Программа\" в 0.\nВыполняется полный цикл микрокоманд.\nГрубо говоря выполняется одна команда.")
         }
 
+        ui.same_line(0.0);
+
+        if ui.button(im_str!("Назад"), [w, h]) && !self.history.is_empty(){
+            let entry = self.history.pop().unwrap();
+            state.computer.registers = entry.registers;
+
+            self.auto_run = false
+        }
+        if ui.is_item_hovered() {
+            ui.tooltip_text("Возвращает регистры к состоянию в котором они были до того как вы нажали последнюю кнопку.")
+        }
 
         if ui.button(im_str!("Пуск"), [w,h]) {
-            computer.registers.r_micro_command_counter = 0xA8;
-            computer.registers.set_execute_by_tick(false);
-            computer.registers.set_lever(true);
-            computer.registers.set_program_mode(true);
+            self.make_history_entry(state);
+            state.computer.registers.r_micro_command_counter = 0xA8;
+            state.computer.registers.set_execute_by_tick(false);
+            state.computer.registers.set_lever(true);
+            state.computer.registers.set_program_mode(true);
         }
         if ui.is_item_hovered() {
             ui.tooltip_text("Устанавливает флаг \"Исполнение\" в 0\nУстанавливает флаг \"Состояние тумблера\" в 1.\nУстанавливается флаг \"Программа\" в 1.\nУстанавливает СчМК в 0A8 то есть сбрасывает состояние регистров ЭВМ\nЭВМ начинает самостоятельно выполнять команду за командой.")
         }
         ui.same_line(0.0);
         if ui.button(im_str!("Продолжить"), [w,h]) {
-            computer.registers.set_execute_by_tick(false);
-            computer.registers.set_lever(true);
-            computer.registers.set_program_mode(true);
+            self.make_history_entry(state);
+            state.computer.registers.set_execute_by_tick(false);
+            state.computer.registers.set_lever(true);
+            state.computer.registers.set_program_mode(true);
         }
         if ui.is_item_hovered() {
             ui.tooltip_text("Устанавливает флаг \"Исполнение\" в 0\nУстанавливает флаг \"Состояние тумблера\" в 1.\nУстанавливается флаг \"Программа\" в 1.\nНе изменяет состояние регистров ЭВМ\nЭВМ начинает самостоятельно выполнять команду за командой.")
         }
+        ui.same_line(0.0);
+        if ui.button(im_str!("Прыжок"), [w,h]) {
+            self.make_history_entry(state);
+            state.computer.registers.set_execute_by_tick(false);
+            state.computer.registers.set_lever(true);
+            state.computer.registers.set_program_mode(true);
+        }
+        if ui.is_item_hovered() {
+            ui.tooltip_text("Проскроливает к текущей исполняемой команде")
+        }
 
-        if computer.registers.get_lever() {
+        if state.computer.registers.get_lever() {
             self.auto_run = true;
         }
         if self.auto_run {
             for _ in 0..100 {
-                if matches!(computer.micro_step(), ExecutionResult::HALTED) {
-                    if computer.registers.get_lever() {
+                if matches!(state.computer.micro_step(), ExecutionResult::HALTED) {
+                    if state.computer.registers.get_lever() {
                         state.popup_manager.open(PopupMessage::new("Остановочка","ЭВМ завершила свою работу"));
                     }
-                    computer.registers.set_lever(false);
+                    state.computer.registers.set_lever(false);
                     self.auto_run = false;
                     break;
                 }

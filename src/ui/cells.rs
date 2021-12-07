@@ -80,21 +80,8 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> Tool for CellsTool<I
 
         self.draw_menu_bar(state, ui);
 
-        let jump_needed = ui.button(im_str!("Перейти к исполняемой команде"), [0.0, 0.0]);
 
         let s_token = ui.push_style_var(StyleVar::ChildBorderSize(0.0));
-
-        let w_token = ChildWindow::new("cells_inside")
-            .always_vertical_scrollbar(true)
-            .border(true)
-            .begin(ui);
-
-        if w_token.is_none() {
-            return;
-        }
-
-        let w_token = w_token.unwrap();
-
 
         let current_executed = (self.counter_register)(&mut state.computer);
 
@@ -109,8 +96,9 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> Tool for CellsTool<I
             ui.text(format!("{:0>3X}", idx));
             ui.same_line(0.0);
             let t = if current_executed == idx as u16 {
-                if jump_needed {
+                if state.jump_requested {
                     ui.set_scroll_here_y();
+                    state.jump_requested = false;
                 }
                 Some(ui.push_style_color(StyleColor::FrameBg, [1.0, 0.0, 0.0, 1.0]))
             } else {
@@ -169,7 +157,6 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> Tool for CellsTool<I
             state.current_command = Some(Box::new(parser.parse(data.get(current_executed as usize).unwrap().get())));
         }
 
-        w_token.end(ui);
         s_token.pop(ui);
     }
 }

@@ -56,6 +56,7 @@ pub struct GuiState {
     pub theme_requested: Option<Theme>,
     pub popup_manager: PopupManager,
     pub current_command: Option<Box<dyn CommandInfo>>,
+    pub jump_requested: bool
 }
 
 impl GuiState {
@@ -68,6 +69,7 @@ impl GuiState {
             computer,
             popup_manager: PopupManager::new(),
             current_command: None,
+            jump_requested: false
         }
     }
 }
@@ -133,7 +135,7 @@ impl Gui {
                                     0,
                                     LayoutTool::new_horizontal("middle")
                                         .append(
-                                            315,
+                                            335,
                                             WindowTool::single_tool(
                                                 315, 0,
                                                 "Панель управления", LayoutTool::new_vertical("execandio")

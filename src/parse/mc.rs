@@ -394,28 +394,28 @@ impl MicroCommand for OperationalCommand1 {
 }
 
 #[derive(Eq, PartialEq)]
-pub enum Shift {
+enum Shift {
     Left,
     Right,
     None,
 }
 
 #[derive(Eq, PartialEq)]
-pub enum Complement {
+enum Complement {
     Left,
     Right,
     None,
 }
 
 #[derive(Eq, PartialEq)]
-pub enum Memory {
+enum Memory {
     Read,
     Write,
     None,
 }
 
 #[derive(Eq, PartialEq)]
-pub enum Operation {
+enum Operation {
     LeftPlusRight,
     LeftPlusRightPlusOne,
     LeftAndRight,
