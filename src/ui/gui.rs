@@ -99,7 +99,6 @@ impl Gui {
                             250,
                             WindowTool::new(
                                 "mem",
-                                250, 0,
                             )
                                 .append("Основная память", CellsTool::new((&computer.general_memory).clone(), |c| c.registers.r_command_counter))
                                 .append("Память МПУ", CellsTool::new((&computer.mc_memory).clone(), |c| c.registers.r_micro_command_counter as u16)),
@@ -159,7 +158,7 @@ impl Gui {
                                                 .append("Таблица трассировки", TraceTool::new()),
                                         )
                                         .append(
-                                            315,
+                                            350,
                                             LayoutTool::new_vertical("infoandload")
                                                 .append(
                                                     0,
@@ -173,7 +172,7 @@ impl Gui {
                                         )
                                         .append(
                                             0,
-                                            WindowTool::new("help", 0, 0)
+                                            WindowTool::new("help")
                                                 .append("Прелюдия", HelpTool::new(include_str!("../help/prelude.txt")))
                                                 .append("Синтаксис", HelpTool::new(include_str!("../help/file.txt")))
                                                 .append("Шпора", HelpTool::new(include_str!("../help/cheatsheet.txt")))
@@ -187,7 +186,6 @@ impl Gui {
                     200,
                     WindowTool::new(
                         "bottom",
-                        0, 200,
                     )
                         .append("Логи", LogTool::new()),
                 ),

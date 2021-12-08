@@ -190,7 +190,7 @@ fn parse_line(line: &str) -> Option<DataLine> {
 
         let (_, name) = match operand(input).finish() {
             Ok((p, v)) => (p, Some(v.trim())),
-            Err(p) => (input, None)
+            Err(_) => (input, None)
         };
 
 

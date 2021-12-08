@@ -10,8 +10,6 @@ use sdl2::mouse::SystemCursor::No;
 use std::io::{Read, Write};
 use crate::parse::mc::ExecutionResult;
 use crate::model::{Registers, Computer};
-use std::process::{Command, ExitStatus};
-use std::time::Duration;
 use imgui::TreeNodeId::Str;
 use crate::ui::open_in_app;
 
@@ -188,7 +186,7 @@ fn latex_converter(ui: &Ui, state: &RefCell<&mut GuiState>, tracing: &mut dyn Fn
 }
 
 impl Tool for TraceTool {
-    fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
+    fn draw(&mut self, ui: &Ui, _: &Io, state: &mut GuiState) {
         let text = "Инструмент для создания таблицы трассировок.\n\n\
             Максимальная длина таблицы:"
             ;
@@ -273,13 +271,6 @@ fn write_to_file(s: &str, postfix: &str, popup_manager: &mut PopupManager) -> Op
 
     Some(filename)
 
-}
-
-struct TraceElement {
-    pos: u16,
-    code: u16,
-    registers: Registers,
-    difference: Option<(usize, u16)>,
 }
 
 struct Tracing {

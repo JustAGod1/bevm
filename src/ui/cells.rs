@@ -27,7 +27,7 @@ impl CellRepresentation {
     }
 
     fn draw_hex(&self, cell: &mut MemoryCell, ui: &Ui) {
-        let mut cell = cell;
+        let cell = cell;
         let mut data = ImString::from(format!("{:0>4X}", cell.get()));
         let width_t = ui.push_item_width(70.0);
         if ui.input_text(im_str!(""), &mut data)
@@ -42,7 +42,7 @@ impl CellRepresentation {
         width_t.pop(ui);
     }
     fn draw_binary(&self, cell: &mut MemoryCell, ui: &Ui) {
-        let mut cell = cell;
+        let cell = cell;
         let mut data = ImString::from(format!("{:0>16b}", cell.get()));
         let width_t = ui.push_item_width(160.0);
         if ui.input_text(im_str!(""), &mut data)
@@ -257,8 +257,8 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
         };
 
 
-        let mut f = match File::open(file_name) {
-            Ok(mut f) => f,
+        let f = match File::open(file_name) {
+            Ok(f) => f,
             Err(e) => {
                 state.popup_manager.open(PopupMessage::new("Ошибка открытия файла", e.to_string()));
                 return None;
@@ -300,7 +300,7 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
         let f = Self::choose_file(state, Some("bpc"));
         if f.is_none() { return; }
 
-        let mut f = f.unwrap();
+        let f = f.unwrap();
 
         let mut start_pos = 0;
 
@@ -389,6 +389,4 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
             token.end(ui)
         }
     }
-
-    pub fn draw(&mut self, computer: &mut Computer, ui: &Ui) {}
 }

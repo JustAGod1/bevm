@@ -8,8 +8,6 @@ pub trait Tool {
 }
 
 pub struct WindowTool {
-    width: f32,
-    height: f32,
     id: String,
     tool_selector: usize,
     tools: Vec<(&'static str, Box<dyn Tool>)>,
@@ -67,7 +65,6 @@ impl WindowTool {
     {
         Self::new(
             tool_name.to_string(),
-            width, height,
         ).append(tool_name, tool)
     }
 
@@ -77,11 +74,9 @@ impl WindowTool {
     }
 
 
-    pub fn new<S: Into<String>>(id: S, width: i32, height: i32) -> WindowTool {
+    pub fn new<S: Into<String>>(id: S) -> WindowTool {
         WindowTool {
             id: id.into(),
-            width: width as f32,
-            height: height as f32,
             tool_selector: 0,
             tools: vec![],
             vertical_scroll: false,

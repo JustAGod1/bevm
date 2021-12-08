@@ -4,8 +4,93 @@ use imgui::sys::igBeginChildFrame;
 use std::cell::Ref;
 use crate::parse::{Parser, CommandInfo};
 use crate::bit_at;
-use imgui::Ui;
+use imgui::{ImString, Ui};
 
+
+struct RangeDescriptor {
+    range: Range<u16>,
+    short_description: &'static str,
+    explained: &'static str,
+}
+
+struct MicroCommandDescriptor {
+    global_descriptions: &'static str,
+    descriptors: Vec<RangeDescriptor>,
+}
+
+impl RangeDescriptor {
+    fn value(&self, opcode: u16, into: &mut String) {
+        for pos in self.range.clone().rev() {
+            if opcode.bitand(1.shl(pos) as u16) != 0 {
+                into.push('1')
+            } else {
+                into.push('0')
+            }
+        }
+    }
+
+    fn new(range: Range<u16>, short_description: &'static str, explained: &'static str) -> RangeDescriptor {
+        RangeDescriptor {
+            range,
+            short_description,
+            explained,
+        }
+    }
+}
+
+impl MicroCommandDescriptor {
+    fn new(global_description: &'static str) -> MicroCommandDescriptor {
+        MicroCommandDescriptor {
+            global_descriptions: global_description,
+            descriptors: vec![],
+        }
+    }
+
+    fn bit(&mut self, bit: u16, short_description: &'static str, explained: &'static str) {
+        self.range(bit, bit, short_description, explained)
+    }
+    fn range(&mut self, from: u16, to: u16, short_description: &'static str, explained: &'static str) {
+        self.descriptors.push(
+            RangeDescriptor::new(to..from + 1, short_description, explained)
+        )
+    }
+
+    fn make_description(&self, ui: &Ui, cmd: &dyn MicroCommand) {
+        let opcode = cmd.opcode();
+
+        ui.text_wrapped(ImString::new(self.global_descriptions).as_ref());
+
+        ui.separator();
+        ui.text("Вертикальное представление:");
+
+        let mut vertical = String::new();
+        for descriptor in &self.descriptors {
+            descriptor.value(opcode, &mut vertical);
+            vertical.push(' ')
+        }
+        ui.text(vertical);
+        ui.text("Поля (есть подсказки при наведении):");
+        for descriptor in &self.descriptors {
+            let mut description_line = String::new();
+
+            descriptor.value(opcode, &mut description_line);
+            description_line.push_str(" - ");
+            description_line.push_str(descriptor.short_description);
+
+            ui.text(description_line);
+
+            if ui.is_item_hovered() {
+                ui.tooltip_text(descriptor.explained)
+            }
+        }
+        ui.separator();
+        ui.text("Горизонтальное представление:");
+
+        let horizontal = cmd.horizontal();
+        ui.text(format!("Hex: {:0>4X} {:0>4X}", horizontal.shr(16), horizontal.bitand(0xFFFF)));
+        ui.text(format!("Bin: {:0>8b} {:0>8b} {:0>8b} {:0>8b}", horizontal.shr(24), horizontal.shr(16u32).bitand(0xFF), horizontal.shr(8u32).bitand(0xFF), horizontal.bitand(0xFF)));
+    }
+}
 
 macro_rules! sub_sum {
         ($e:expr, $left:expr ,$right:expr) => {
@@ -27,13 +112,15 @@ macro_rules! sub_sum {
 pub enum ExecutionResult {
     SUCCESS,
     JUMPED,
-    HALTED
+    HALTED,
 }
 
-pub trait MicroCommand  {
+pub trait MicroCommand {
     fn run(&self, computer: &mut Computer) -> ExecutionResult;
     fn mnemonic(&self) -> String;
+    fn draw_highlight(&self, ui: &Ui);
     fn opcode(&self) -> u16;
+    fn horizontal(&self) -> u32;
 }
 
 pub struct OperationalCommand0(u16);
@@ -43,7 +130,7 @@ pub struct OperationalCommand1(u16);
 pub struct ControlCommand(u16);
 
 pub struct MicroCommandInfo {
-    command: Box<dyn MicroCommand>
+    command: Box<dyn MicroCommand>,
 }
 
 impl MicroCommandInfo {
@@ -62,10 +149,12 @@ impl CommandInfo for MicroCommandInfo {
     }
 
     fn draw_highlight(&self, ui: &Ui) {
+        self.command.draw_highlight(ui)
     }
 }
 
 pub struct McParser;
+
 impl McParser {
     pub fn new() -> McParser {
         McParser {}
@@ -81,7 +170,7 @@ impl Parser<MicroCommandInfo> for McParser {
         false
     }
 
-    fn rev_parse(&self, str: &str) -> Result<u16, String> {
+    fn rev_parse(&self, _: &str) -> Result<u16, String> {
         panic!()
     }
 }
@@ -114,18 +203,86 @@ impl MicroCommand for ControlCommand {
         format!("if {}[{}] == {} GOTO {}",
                 self.register().mnemonic(),
                 self.bit_location(),
-                if self.needed_bit() {1} else {0},
+                if self.needed_bit() { 1 } else { 0 },
                 format!("{:0>4X}", self.jump_address())
         )
+    }
+
+    fn draw_highlight(&self, ui: &Ui) {
+        let description = "Эта микрокоманда нужна для организации условных переходов в мпу.\n\n\
+        Работает все довольно просто:\n\
+        1. Берем регистр который указан в поле \"Проверяемый регистр\"\n\
+        2. Сравниваем его бит, номер которого записан в поле \"Проверяемый бит\" с битом сравнения.\n\
+        3. Если они совпадают, присваиваем значение поля \"Адрес перехода\" регистру СчМК. Иначе делаем \
+        ничего
+        ";
+
+        let mut descriptor = MicroCommandDescriptor::new(description);
+
+
+        descriptor.bit(15, "Код операции", "Означает, что эта команда является операционной командой");
+        descriptor.bit(14, "Бит сравнения", "Прыжок будет совершен если сравниваемый бит совпадет с этим");
+
+        descriptor.range(13, 12, "Проверяемый регистр", "Из этого регистра мы возьмем проверяемый бит.\n\
+        00 - РС\n\
+        01 - РД\n\
+        10 - РК\n\
+        11 - А
+        ");
+
+
+        descriptor.range(11, 8, "Проверяемый бит", "Номер бита, который нам нужно сравнить.");
+
+        descriptor.range(7, 0, "Адрес перехода", "В случае когда проверяемый бит совпадет с битом сравнения в СчМК будет присвоено это значение");
+
+        descriptor.make_description(ui, self)
     }
 
     fn opcode(&self) -> u16 {
         self.0
     }
+
+    fn horizontal(&self) -> u32 {
+        // type
+        let mut result = 1u32;
+        //empty
+        result = result.shl(2);
+
+        result = result.shl(1);
+        if self.register() == Register::Counter { result += 1 }
+
+        result = result.shl(1);
+        if self.register() == Register::Command { result += 1 }
+
+        result = result.shl(1);
+        if self.register() == Register::Data { result += 1 }
+
+        result = result.shl(1);
+        if self.register() == Register::Status { result += 1 }
+
+        result = result.shl(1);
+        result += if self.needed_bit() { 1 } else { 0 };
+
+        result = result.shl(8);
+        result += self.jump_address() as u32;
+
+        result = result.shl(16 - self.bit_location());
+        result += 1;
+        result = result.shl(self.bit_location());
+
+        result
+    }
+}
+
+fn set_bit(num: &mut u32, pos: u8, value: bool) {
+    let value = if value { 1 } else { 0 };
+    let bit = value.shl(pos) as u32;
+    *num = num.bitand(bit.bitxor(0xFFFFFFFF));
+    *num = num.bitor(bit);
 }
 
 impl MicroCommand for OperationalCommand0 {
-    fn run(&self, computer: &mut Computer) -> ExecutionResult{
+    fn run(&self, computer: &mut Computer) -> ExecutionResult {
         match self.shift() {
             Shift::Right => {
                 let c = computer.registers.get_overflow();
@@ -142,8 +299,8 @@ impl MicroCommand for OperationalCommand0 {
                     computer.registers.r_buffer = (computer.registers.r_buffer as u32).bitor(0x10000);
                 }
                 return ExecutionResult::SUCCESS;
-            },
-            Shift::Left =>  {
+            }
+            Shift::Left => {
                 let c = computer.registers.get_overflow();
                 computer.registers.r_buffer = (computer.registers.r_counter as u32).shl(1u32).bitand(0x1FFFF);
                 computer.log(true, format!("Присвоил регистру БР значение {:0>4X} из сдвинутого влево регистра А({:0>4X})", computer.registers.r_buffer, computer.registers.r_counter));
@@ -152,7 +309,6 @@ impl MicroCommand for OperationalCommand0 {
                     computer.log(true, format!("Установил 0 бит регистра БР в 1 так как до начала сдвига был установлен флаг C"));
                 }
                 return ExecutionResult::SUCCESS;
-
             }
             _ => {}
         }
@@ -167,7 +323,7 @@ impl MicroCommand for OperationalCommand0 {
                     .unwrap()
                     .set(computer.registers.r_data);
                 computer.log(false, format!("Присвоил значение {:0>4X} в ячейку {:0>4X}", computer.registers.r_data, computer.registers.r_address));
-            },
+            }
             Memory::Read => {
                 computer.registers.r_data = computer.general_memory
                     .borrow_mut()
@@ -176,12 +332,10 @@ impl MicroCommand for OperationalCommand0 {
                     .unwrap()
                     .get();
                 computer.log(false, format!("Прочитал значение {:0>4X} из ячейки {:0>4X}", computer.registers.r_data, computer.registers.r_address));
-
-            },
+            }
             Memory::None => {}
         };
 
-        if self.operation() == Operation::None { return ExecutionResult::SUCCESS; }
 
         let complement = self.complement();
         let left = self.left_input()
@@ -192,7 +346,7 @@ impl MicroCommand for OperationalCommand0 {
                     r.get(computer).bitxor(0xFFFF)
                 } else { r.get(computer) }
             )
-            .unwrap_or(if complement == Complement::Left {0xFFFF} else {0});
+            .unwrap_or(if complement == Complement::Left { 0xFFFF } else { 0 });
 
         let right = self.right_input()
             .map(
@@ -202,7 +356,7 @@ impl MicroCommand for OperationalCommand0 {
                     r.get(computer).bitxor(0xFFFF)
                 } else { r.get(computer) }
             )
-            .unwrap_or(if complement == Complement::Right {0xFFFF} else {0});
+            .unwrap_or(if complement == Complement::Right { 0xFFFF } else { 0 });
 
 
         match self.operation() {
@@ -217,16 +371,10 @@ impl MicroCommand for OperationalCommand0 {
             Operation::LeftAndRight => {
                 computer.log(true, format!("Произвел операцию {}({:0>4X} & {:0>4X}) и положил в БР", self.expression_mnemonic(), left, right));
                 computer.registers.r_buffer = (right as u32) & (left as u32);
-            },
-            Operation::None => panic!()
+            }
         };
 
         ExecutionResult::SUCCESS
-
-    }
-
-    fn opcode(&self) -> u16 {
-        self.0
     }
 
     fn mnemonic(&self) -> String {
@@ -245,8 +393,137 @@ impl MicroCommand for OperationalCommand0 {
             Memory::None => ""
         };
 
-        return format!("{}{}", expression, memory)
+        return format!("{}{}", expression, memory);
 
+    }
+
+    fn draw_highlight(&self, ui: &Ui) {
+        let desc = "Операционная команда 0\n\n\
+            Ее предназначение - работа с основной памятью, побитовые сдвиги и арифметические действия";
+
+        let mut descriptor = MicroCommandDescriptor::new(desc);
+
+        descriptor.range(15, 14, "Код операции", "Означает, что эта команда является операционной командой 0");
+        descriptor.range(13, 12, "Левый вход", "Регистр который будет выполнять роль левого операнда.\n\
+        00 - 0 - это не регистр. Это просто ноль.\n\
+        01 - А\n\
+        10 - РС\n\
+        11 - КР");
+        descriptor.range(11, 10, "Пустое место", "Это просто бесполезные биты. Не важны что тут будет. Они бесполезны.");
+        descriptor.range(9, 8, "Правый вход", "Регистр, который будет выполнять роль правого операнда.\n\
+        00 - 0 - это не регистр. Это просто ноль.\n\
+        01 - РД\n\
+        10 - РК\n\
+        11 - СК");
+        descriptor.range(7, 6, "Обратный код", "От какого операнда мы будем искать обратный код.\n\
+        Oбратный код это когда единицы на нули и нули на единицы\n\
+        00 - ни от какого\n\
+        01 - от левого\n\
+        10 - от правого\n\
+        11 - ни от какого");
+        descriptor.range(5, 4, "Операция", "Вид операции которую мы применим к операндам:\n\
+        00 - Левый + Правый\n\
+        01 - Левый + Правый + 1\n\
+        10 - Левый & Правый(& - побитовое И)\n\
+        11 - Левый + Правый");
+        descriptor.range(3, 2, "Сдвиг", "Это поле - чад. Если мы что-то сдвигаем, то больше ничего не делаем.\n\
+        Результат бинарного сдвига попадает в БР\n\
+        Сдвигаем мы регистр A\n\
+        00 - нет сдвига\n\
+        01 - сдвиг вправо\n\
+        10 - сдвиг влево\n\
+        11 - нет сдвига\n");
+        descriptor.range(1, 0, "Память", "\
+        00 - нет обмена\n\
+        01 - чтение: возьми из ячейки, адрес которой лежит в РА, основной памяти и положи в РД\n\
+        10 - запись: наоборот\n\
+        11 - нет обмена");
+
+        descriptor.make_description(ui, self);
+    }
+
+    fn opcode(&self) -> u16 {
+        self.0
+    }
+
+    fn horizontal(&self) -> u32 {
+        let mut result = 0;
+
+        for i in 28..=31{
+            set_bit(&mut result, i, false);
+        }
+
+        match self.left_input() {
+            None => {}
+            Some(register) => {
+                if register == Register::Counter {
+                    set_bit(&mut result, 4, true);
+                }
+                if register == Register::Status {
+                    set_bit(&mut result, 5, true);
+                }
+                if register == Register::Command {
+                    set_bit(&mut result, 6, true);
+                }
+            }
+        }
+
+        match self.right_input() {
+            None => {}
+            Some(register) => {
+                if register == Register::Data {
+                    set_bit(&mut result, 1, true);
+                }
+                if register == Register::CommandCounter {
+                    set_bit(&mut result, 3, true);
+                }
+                if register == Register::Command {
+                    set_bit(&mut result, 6, true);
+                }
+            }
+        }
+
+        match self.complement() {
+            Complement::Left => {
+                set_bit(&mut result, 7, true);
+            }
+            Complement::Right => {
+                set_bit(&mut result, 8, true);
+            }
+            Complement::None => {}
+        }
+
+        match self.operation() {
+            Operation::LeftPlusRight => {}
+            Operation::LeftPlusRightPlusOne => {
+                set_bit(&mut result, 10, true);
+            }
+            Operation::LeftAndRight => {
+                set_bit(&mut result, 9, true);
+            }
+        }
+
+        match self.shift() {
+            Shift::Left => {
+                set_bit(&mut result, 12, true);
+            }
+            Shift::Right => {
+                set_bit(&mut result, 11, true);
+            }
+            Shift::None => {}
+        }
+
+        match self.memory() {
+            Memory::Read => {
+                set_bit(&mut result, 23, true);
+            }
+            Memory::Write => {
+                set_bit(&mut result, 24, true);
+            }
+            Memory::None => {}
+        }
+
+        result
     }
 }
 
@@ -268,7 +545,7 @@ impl MicroCommand for OperationalCommand1 {
                             computer.registers.set_io(true);
                             computer.process_io_command();
                         } else {
-                            computer.log(true, "Было запрошенно взаимодействие с ВУ но РД не равен РК. Запрос проигнорирован.".to_string());
+                            computer.log(true, "Было запрошено взаимодействие с ВУ но РД не равен РК. Запрос проигнорирован.".to_string());
                         }
                     }
                     IOControl::DisableInterruption => {
@@ -286,7 +563,6 @@ impl MicroCommand for OperationalCommand1 {
                             device.ready = false;
                         }
                     }
-
                 }
             }
 
@@ -297,14 +573,14 @@ impl MicroCommand for OperationalCommand1 {
             CUpdate::Reset => {
                 computer.log(false, "Сбросил флаг переноса".to_string());
                 computer.registers.set_overflow(false);
-            },
+            }
             CUpdate::Assign => {
                 if computer.registers.r_buffer > 0xFFFF {
                     computer.registers.r_buffer = computer.registers.r_buffer.bitand(0xFFFF);
                     computer.registers.set_overflow(true);
                     computer.log(false, "Установил флаг переноса и убрал лишнюю единицу у БР".to_string());
                 }
-            },
+            }
             CUpdate::SetOne => {
                 computer.log(false, "Установил флаг переноса".to_string());
                 computer.registers.set_overflow(true);
@@ -321,7 +597,6 @@ impl MicroCommand for OperationalCommand1 {
             } else {
                 computer.registers.set_null(false);
                 computer.log(false, "Убрал флаг \"нуль\"".to_string());
-
             }
         }
         if nz == NZUpdate::N || nz == NZUpdate::NZ {
@@ -331,7 +606,6 @@ impl MicroCommand for OperationalCommand1 {
             } else {
                 computer.registers.set_negative(false);
                 computer.log(false, "Убрал флаг \"знак\"".to_string());
-
             }
         }
 
@@ -339,7 +613,7 @@ impl MicroCommand for OperationalCommand1 {
             for register in v {
                 computer.log(
                     register != Register::Counter && register != Register::CommandCounter,
-                    format!("Перенес значение {:0>4X} из регистра БР в регистр {}", computer.registers.r_buffer, register.mnemonic())
+                    format!("Перенес значение {:0>4X} из регистра БР в регистр {}", computer.registers.r_buffer, register.mnemonic()),
                 );
                 register.assign(computer, computer.registers.r_buffer.bitand(0xFFFF) as u16);
             }
@@ -364,7 +638,7 @@ impl MicroCommand for OperationalCommand1 {
                 IOControl::Reset => "Сброс флагов ВУ; ",
                 IOControl::Connect => "Организация связей с ВУ; "
             }.to_string()
-        }).fold("".to_string(), |a, b| { format!("{}{}",a,b) });
+        }).fold("".to_string(), |a, b| { format!("{}{}", a, b) });
 
 
         let c = match self.c() {
@@ -383,13 +657,121 @@ impl MicroCommand for OperationalCommand1 {
 
         let updated = self.output().map(|vec| {
             vec.iter().map(|r| r.mnemonic())
-                .fold("".to_string(), |a,b| format!("{} {}", a, b))
+                .fold("".to_string(), |a, b| format!("{} {}", a, b))
         }).unwrap_or("".to_string());
 
         let updated = if updated.len() > 0 { format!("{} = БР; ", updated.trim()) } else { updated.trim().to_string() };
 
         return format!("{}{}{}{}", io, c, nz, updated);
+    }
 
+    fn draw_highlight(&self, ui: &Ui) {
+        let desc = "Операционная команда 1\n\n\
+        Эта команда - универсальный боец. В нее пихнули все что не поместилось в другие.\n\
+        Но стоит выделить, что если операционная команда 0 изменяет только регистр БР, то эта команда \
+        умеет пересылать из БР в какой-нибудь другой регистр. Таким образом эти команды часто работают \
+        в паре.
+        ";
+
+        let mut descriptor = MicroCommandDescriptor::new(desc);
+
+
+        descriptor.range(15, 14, "Код операции", "Означает, что эта команда является операционной командой 1");
+        descriptor.range(13, 12, "Пустое место", "Это просто бесполезные биты. Не важны что тут будет. Они бесполезны.");
+        descriptor.bit(11, "Включить прерывания", "Если 1, прерывания будут разрешены.");
+        descriptor.bit(10, "Выключить прерывания", "Если 1, прерывания будут запрещены.\nЕсли совместить с предыдущим флагом, не произойдет ничего.");
+        descriptor.bit(9, "Сброс готовности ВУ", "Если 1, у всех ВУ будет сброшен флаг готовности.");
+        descriptor.bit(8, "Запуск контролера ВУ", "Вот тут начинается черная магия.\n\
+        Если 1:\n\
+        1. Если РК не равно РД не делаем ничего\n\
+        2. Иначе устанавливаем 12 бит регистра РС\n\
+        3. Установка этого бита приводит в действие контролер ВУ\n\
+        4. Далее читайте описание 12 бита РС");
+        descriptor.range(7, 6, "Регистр С", "Этот бит задает вид взаимодействия с 0 битом регистра РС.\n\
+        00 - нет взаимодействия\n\
+        01 - если 16 бит регистра БР равен 1, то устанавливаем С в единицу и убираем 16 бит у БР\n\
+        10 - устанавливаем С в 0\n\
+        11 - устанавливаем С в 1");
+        descriptor.bit(5, "Регистр N", "Если 1 и если БР меньше 0, то есть 15 бит равен 1, N будет установлен в 1");
+        descriptor.bit(4, "Регистр Z", "Если 1 и если БР равен 0, Z будет установлен в 1");
+        descriptor.bit(3, "Остановочка", "Завершает роботу эвм. Чаще всего это говорит о том что команда из основной памяти выполнена.");
+        descriptor.range(2, 0, "Выход АЛУ", "Говорит о том куда пересылать содержимое БР\n\
+        000 - никуда\n\
+        001 - в РА\n\
+        010 - в РД\n\
+        011 - в РК\n\
+        100 - в СК\n\
+        101 - в А\n\
+        110 - никуда\n\
+        111 - в РА, РД, РК и А");
+
+        descriptor.make_description(ui, self);
+    }
+
+
+    fn horizontal(&self) -> u32 {
+        let mut result = 0;
+
+        set_bit(&mut result, 29, self.io().contains(&IOControl::Connect));
+        set_bit(&mut result, 28, self.io().contains(&IOControl::EnableInterruption));
+        set_bit(&mut result, 27, self.io().contains(&IOControl::DisableInterruption));
+        set_bit(&mut result, 26, self.io().contains(&IOControl::Reset));
+
+        match self.c() {
+            CUpdate::Assign => {
+                set_bit(&mut result, 13, true);
+            }
+            CUpdate::Reset => {
+                set_bit(&mut result, 16, true);
+            }
+            CUpdate::SetOne => {
+                set_bit(&mut result, 17, true);
+            }
+            CUpdate::None => {}
+        }
+
+        match self.nz() {
+            NZUpdate::N => {
+                set_bit(&mut result, 14, true);
+            }
+            NZUpdate::Z => {
+                set_bit(&mut result, 15, true);
+            }
+            NZUpdate::NZ => {
+                set_bit(&mut result, 14, true);
+                set_bit(&mut result, 15, true);
+            }
+            NZUpdate::None => {}
+        }
+
+        if self.hlt() {
+            set_bit(&mut result, 0, true)
+        }
+
+        if let Some(vec) = self.output() {
+            for x in vec {
+                match x {
+                    Register::Address => {
+                        set_bit(&mut result, 18, true)
+                    }
+                    Register::Command => {
+                        set_bit(&mut result, 20, true)
+                    }
+                    Register::Data => {
+                        set_bit(&mut result, 19, true)
+                    }
+                    Register::CommandCounter => {
+                        set_bit(&mut result, 21, true)
+                    }
+                    Register::Counter => {
+                        set_bit(&mut result, 22, true)
+                    }
+                    _ => { panic!() }
+                }
+            }
+        }
+
+        result
     }
 }
 
@@ -418,8 +800,7 @@ enum Memory {
 enum Operation {
     LeftPlusRight,
     LeftPlusRightPlusOne,
-    LeftAndRight,
-    None,
+    LeftAndRight
 }
 
 impl OperationalCommand0 {
@@ -452,7 +833,7 @@ impl OperationalCommand0 {
         }
     }
 
-    pub fn shift(&self) -> Shift {
+    fn shift(&self) -> Shift {
         let b2 = bit_at!(self.0, 2);
         let b3 = bit_at!(self.0, 3);
 
@@ -482,12 +863,12 @@ impl OperationalCommand0 {
         }
     }
 
-    pub fn operation(&self) -> Operation {
+    fn operation(&self) -> Operation {
         let b4 = bit_at!(self.0, 4);
         let b5 = bit_at!(self.0, 5);
 
         if b4 && b5 { // Ну опять же. В методичке не уточнялось. Старые образцы ничего не делают.
-            Operation::None
+            Operation::LeftPlusRight
         } else if b4 {
             Operation::LeftPlusRightPlusOne
         } else if b5 {
@@ -497,7 +878,7 @@ impl OperationalCommand0 {
         }
     }
 
-    pub fn complement(&self) -> Complement {
+    fn complement(&self) -> Complement {
         let b6 = bit_at!(self.0, 6);
         let b7 = bit_at!(self.0, 7);
 
@@ -637,7 +1018,6 @@ impl ControlCommand {
 }
 
 
-
 impl OperationalCommand0 {
     fn expression_mnemonic(&self) -> String {
         let complement = self.complement();
@@ -648,24 +1028,24 @@ impl OperationalCommand0 {
                 |r| if complement == Complement::Left
                 { format!("!{}", r.mnemonic()) } else { r.mnemonic() }
             )
-            .unwrap_or(if complement == Complement::Left { "!0".to_string()} else { "0".to_string() });
+            .unwrap_or(if complement == Complement::Left { "!0".to_string() } else { "0".to_string() });
 
         let right = self.right_input()
             .map(
                 |r| if complement == Complement::Right
                 { format!("!{}", r.mnemonic()) } else { r.mnemonic() }
             )
-            .unwrap_or(if complement == Complement::Right { "!0".to_string()} else { "0".to_string() });
+            .unwrap_or(if complement == Complement::Right { "!0".to_string() } else { "0".to_string() });
 
         let expression = match self.operation() {
             Operation::LeftPlusRight => format!("БР={} + {}; ", left, right),
             Operation::LeftPlusRightPlusOne => format!("БР={} + {} + 1; ", left, right),
             Operation::LeftAndRight => format!("БР={} & {}; ", left, right),
-            Operation::None => "".to_string()
         };
         expression
     }
 }
+
 #[cfg(test)]
 mod tests {
     use core::ops::*;

@@ -1,8 +1,6 @@
 use std::io::Read;
 use std::process::Command;
 use imgui::{Ui, ImStr};
-use crate::model::Computer;
-use crate::ui::gui::PopupManager;
 
 pub mod gui;
 

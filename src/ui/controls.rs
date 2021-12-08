@@ -111,10 +111,7 @@ impl SmartControlsTool {
         }
         ui.same_line(0.0);
         if ui.button(im_str!("Прыжок"), [w,h]) {
-            self.make_history_entry(state);
-            state.computer.registers.set_execute_by_tick(false);
-            state.computer.registers.set_lever(true);
-            state.computer.registers.set_program_mode(true);
+            state.jump_requested = true
         }
         if ui.is_item_hovered() {
             ui.tooltip_text("Проскроливает к текущей исполняемой команде")
