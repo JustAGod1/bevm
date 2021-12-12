@@ -40,7 +40,7 @@ pub fn open_in_app(str: &str) -> Result<(), String> {
     let mut process = match std::env::consts::OS {
         "linux" => Command::new("sh").arg("-c").arg(format!("xdg-open {}", str)).spawn(),
         "macos" => Command::new("sh").arg("-c").arg(format!("open {}", str)).spawn(),
-        "windows" => Command::new("cmd").arg("/c").arg(str).spawn(),
+        "windows" => Command::new("cmd").arg("/c").arg("start").arg(str).spawn(),
         _ => {
             return Err("Операционная система не поддерживается".to_owned());
         }
