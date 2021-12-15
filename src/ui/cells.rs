@@ -302,7 +302,7 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
 
         let f = f.unwrap();
 
-        let mut start_pos = 0;
+        let mut start_pos: Option<u16> = None;
 
         let mut parse_result = Vec::<(u16, u16)>::new();
 
@@ -325,15 +325,15 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
                     }
                     let pos = pos.unwrap();
 
-                    let mut cmd_str = split.get(0).unwrap().clone();
+                    let mut cmd_str = split.get(1).unwrap().clone();
                     if cmd_str.len() > 0 && cmd_str.chars().nth(0).unwrap() == '+' {
-                        start_pos = pos;
+                        start_pos = Some(pos);
                         cmd_str = &cmd_str[1..];
                     }
 
                     let cmd = u16::from_str_radix(cmd_str, 16);
                     if let Err(_) = cmd {
-                        state.popup_manager.open(PopupMessage::new("Ошибочка", format!("Не могу распарсить позицию {} на строчке {}", cmd_str, line_num)));
+                        state.popup_manager.open(PopupMessage::new("Ошибочка", format!("Не могу распарсить команду {} на строчке {}", cmd_str, line_num)));
                         return;
                     }
                     let cmd = cmd.unwrap();
@@ -352,6 +352,11 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
         for (pos, v) in parse_result {
             mem.get_mut(pos as usize).unwrap().set(v);
         }
+
+        if let Some(pos) = start_pos {
+            state.computer.registers.r_command_counter = pos;
+        }
+
 
     }
 
