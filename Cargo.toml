@@ -13,9 +13,9 @@ winres = "0.1"
 imgui = "0.7.0"
 nom = "7.0.0"
 path-clean = "0.1.0"
-sdl2 = { version = "0.34", features = ["bundled"] }
+sdl2 = { git = "https://github.com/JustAGod1/rust-sdl2.git", features = ["bundled"] }
 gl = "0.10.0"
-imgui-sdl2 = "0.14.0"
+imgui-sdl2 = { git = "https://github.com/JustAGod1/rust-imgui-sdl2.git"}
 imgui-opengl-renderer = "0.11.0"
 nfd = { git = "https://github.com/saurvs/nfd-rs.git" }
 
