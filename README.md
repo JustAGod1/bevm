@@ -7,6 +7,8 @@
 
 ## Установка
 
+### [Скачивать тут](https://github.com/JustAGod1/bevm/releases)
+
 Архивы и образы для каждой платформы находятся в [разделе релизов](https://github.com/JustAGod1/bevm/releases)
 
 ### Windows
