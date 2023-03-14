@@ -78,6 +78,7 @@ impl WindowTool {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_vertical_scroll(&mut self) -> &mut WindowTool {
         self.vertical_scroll = true;
         self

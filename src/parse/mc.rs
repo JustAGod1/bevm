@@ -1005,7 +1005,7 @@ enum Complement {
 }
 
 #[derive(Eq, PartialEq)]
-enum Memory {
+pub enum Memory {
     Read,
     Write,
     None,

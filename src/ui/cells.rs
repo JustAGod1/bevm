@@ -249,8 +249,9 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
             pos += 1;
         }
 
-        f.write(s.as_bytes());
-        f.flush();
+        f.write(s.as_bytes())
+            .map_err(|_| "Can't write file")?;
+        f.flush().map_err(|_| "Can't write file")?;
 
         Ok(())
     }
