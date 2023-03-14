@@ -1,10 +1,5 @@
 use crate::parse::{CommandInfo, Parser};
 
-use nom::bytes::complete::{is_not, take_while};
-use nom::character::complete::char;
-
-use nom::sequence::preceded;
-use nom::{FindSubstring, Finish, IResult};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read};
 
@@ -13,48 +8,27 @@ pub fn parse_file<T: Read, I: CommandInfo, P: Parser<I>>(
     parser: &P,
     max_size: u16,
 ) -> Result<Vec<(u16, u16)>, String> {
-    let mut reader = BufReader::new(data);
+    let reader = BufReader::new(data);
     let mut cursor = 0;
 
-    let mut line_buf = String::with_capacity(128);
+    // let mut line_buf = String::with_capacity(128);
 
     let mut variables = HashMap::<String, u16>::new();
     let mut pre_result = Vec::<(u16, String, u16)>::new();
 
-    let mut line_num = 0;
+    for (line_num, line) in reader.lines().enumerate().take(u16::MAX.into()) {
+        let line_num = line_num + 1;
+        let line = line.map_err(|x| x.to_string())?;
 
-    loop {
-        line_num += 1;
-        line_buf.clear();
-        match reader.read_line(&mut line_buf) {
-            Ok(v) => {
-                if v == 0 {
-                    break;
-                } else {
-                    ()
-                }
-            }
-            Err(err) => {
-                return Err(err.to_string());
-            }
-        }
-
-        let line = line_buf.to_string();
-
-        let parsed = parse_line(line.as_str());
-
-        if parsed.is_none() {
+        let Some(parsed) = parse_line(line.as_str()) else {
             continue;
-        }
-
-        let parsed = parsed.unwrap();
+        };
 
         macro_rules! err {
             ($msg:expr) => {
-                format!("Ошибка в строке {}. Номер строки: {}. Сообщение: {}", line_buf, line_num, $msg)
+                format!("Ошибка в строке {}. Номер строки: {}. Сообщение: {}", line, line_num, $msg)
             };
         }
-
         match parsed {
             DataLine::Operator(name, arg) => {
                 if name != "pos" {
@@ -77,7 +51,7 @@ pub fn parse_file<T: Read, I: CommandInfo, P: Parser<I>>(
                 cursor = pos
             }
             DataLine::Command(command, name) => {
-                pre_result.push((cursor, command.to_string(), line_num));
+                pre_result.push((cursor, command.to_string(), line_num as u16));
 
                 if let Some(name) = name {
                     variables.insert(name.to_string(), cursor);
@@ -164,71 +138,91 @@ pub fn parse_file<T: Read, I: CommandInfo, P: Parser<I>>(
     Ok(result)
 }
 
+#[derive(Debug, PartialEq)]
 enum DataLine<'a> {
     Operator(&'a str, &'a str),
     Command(&'a str, Option<&'a str>),
 }
 
 fn is_variable_name_char(ch: char) -> bool {
-    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9');
+    return ch.is_ascii_alphabetic() || ch.is_ascii_digit();
 }
 
 // Да я притащил либу для парсинга простой хуйни
 fn parse_line(line: &str) -> Option<DataLine> {
-    let line = line
-        .find_substring("#")
-        .map_or(line, |p| &line[0..p])
-        .trim();
+    // remove comments
+    // std::process::exit(500);
+    let line = line.split_terminator('#').next().unwrap_or(line).trim();
 
-    if line.len() <= 0 {
+    if line.len() == 0 {
         return None;
+    };
+
+    // if starts with $
+    if line.starts_with('$') {
+        let mut iter = (line[1..]).split_ascii_whitespace();
+        let first = iter.next();
+        let second = iter.next();
+        return Some(DataLine::Operator(first?.trim(), second?.trim()));
     }
 
-    fn is_hex_digit(c: char) -> bool {
-        c.is_digit(16)
-    }
-
-    fn operand(input: &str) -> IResult<&str, &str> {
-        preceded(char('$'), take_while(|c| is_variable_name_char(c)))(input)
-    }
-
-    fn command(input: &str) -> IResult<&str, &str> {
-        is_not("$")(input)
-    }
-
-    fn command_line(input: &str) -> (&str, Option<&str>) {
-        let (input, command) = command(input).finish().ok().unwrap();
-
-        let (_, name) = match operand(input).finish() {
-            Ok((p, v)) => (p, Some(v.trim())),
-            Err(_) => (input, None),
-        };
-
-        return (command, name);
-    }
-
-    fn operand_line(input: &str) -> Option<(&str, &str)> {
-        match operand(input).finish() {
-            Ok((p, v)) => Some((v.trim(), p)),
-            Err(_) => None,
-        }
-    }
-
-    if let Some((name, arg)) = operand_line(line) {
-        return Some(DataLine::Operator(name.trim(), arg.trim()));
-    }
-
-    let (cmd, operand) = command_line(line);
-
-    Some(DataLine::Command(cmd.trim(), operand.map(|s| s.trim())))
+    // if not
+    let mut iter = line.split('$');
+    let first = iter.next();
+    let second = iter.next();
+    return Some(DataLine::Command(first?.trim(), second.map(|x| x.trim())));
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::parse::file::parse_line;
+    use crate::parse::file::{parse_line, DataLine};
 
     #[test]
     fn parse() {
-        parse_line("58: Huy $ded#de#abc");
+        let res = parse_line("58: Huy $ded#de#abc");
+        assert_eq!(res, Some(DataLine::Command("58: Huy", Some("ded"))));
+    }
+
+    #[test]
+    fn parse_program_line_by_line() {
+        let a = parse_line("$pos 10");
+        assert_eq!(a, Some(DataLine::Operator("pos", "10")));
+    }
+    #[test]
+    fn parse0() {
+        let a = parse_line("CLA $start");
+        assert_eq!(a, Some(DataLine::Command("CLA", Some("start"))));
+    }
+    #[test]
+    fn parse1() {
+        assert_eq!(
+            parse_line("BMI %then"),
+            Some(DataLine::Command("BMI %then", None))
+        );
+    }
+    #[test]
+    fn parse2() {
+        assert_eq!(
+            parse_line("BR %start"),
+            Some(DataLine::Command("BR %start", None))
+        );
+    }
+    #[test]
+    fn parse3() {
+        assert_eq!(parse_line("$pos 15"), Some(DataLine::Operator("pos", "15")));
+    }
+    #[test]
+    fn parse4() {
+        assert_eq!(
+            parse_line("ISZ 2 $then"),
+            Some(DataLine::Command("ISZ 2", Some("then")))
+        );
+    }
+    #[test]
+    fn parse5() {
+        assert_eq!(
+            parse_line("BR %start"),
+            Some(DataLine::Command("BR %start", None))
+        );
     }
 }

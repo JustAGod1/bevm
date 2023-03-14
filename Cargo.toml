@@ -11,7 +11,6 @@ winres = "0.1"
 
 [dependencies]
 imgui = "0.7.0"
-nom = "7.0.0"
 path-clean = "0.1.0"
 sdl2 = { git = "https://github.com/JustAGod1/rust-sdl2.git", features = ["bundled"] }
 gl = "0.10.0"
