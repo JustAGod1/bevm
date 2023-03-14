@@ -1,13 +1,12 @@
-use crate::model::Computer;
-use crate::ui::gui::{GuiState, PopupManager};
-use imgui::{im_str, ImString, ItemFlag, StyleVar, Ui};
+use crate::ui::gui::GuiState;
+use imgui::{ImString, Ui};
 
 pub trait Popup {
     fn name(&self) -> ImString;
 
     fn draw(&mut self, ui: &Ui, state: &mut GuiState) -> bool;
 
-    fn on_file_dropped(&mut self, filename: &str) {}
+    fn on_file_dropped(&mut self, _filename: &str) {}
 }
 
 pub struct PopupMessage {
@@ -28,7 +27,7 @@ impl Popup for PopupMessage {
         ImString::new(self.title.as_str())
     }
 
-    fn draw(&mut self, ui: &Ui, state: &mut GuiState) -> bool {
+    fn draw(&mut self, ui: &Ui, _state: &mut GuiState) -> bool {
         let mut open = true;
         let name = self.name();
         let popup = ui
@@ -56,7 +55,7 @@ impl Popup for PopupParseError {
         ImString::from("Ошибка разбора".to_string())
     }
 
-    fn draw(&mut self, ui: &Ui, state: &mut GuiState) -> bool {
+    fn draw(&mut self, ui: &Ui, _state: &mut GuiState) -> bool {
         let mut open = true;
         let name = self.name();
         let popup = ui

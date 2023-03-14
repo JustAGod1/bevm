@@ -2,8 +2,8 @@ use crate::bit_at;
 use crate::ui::gui::GuiState;
 use crate::ui::window::Tool;
 use imgui::sys::{
-    igBeginTable, igEndTable, igNextColumn, igTableNextColumn, igTableNextRow,
-    ImGuiTableFlags_None, ImGuiTableRowFlags_None, ImVec2,
+    igBeginTable, igEndTable, igTableNextColumn, igTableNextRow, ImGuiTableFlags_None,
+    ImGuiTableRowFlags_None, ImVec2,
 };
 use imgui::{im_str, ImString, Io, Ui};
 use std::os::raw::c_int;
@@ -26,7 +26,7 @@ impl StatusTool {
 }
 
 impl Tool for StatusTool {
-    fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
+    fn draw(&mut self, ui: &Ui, _io: &Io, state: &mut GuiState) {
         unsafe {
             igBeginTable(
                 im_str!("Status").as_ptr(),

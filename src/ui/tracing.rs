@@ -1,17 +1,17 @@
-use crate::model::{Computer, Registers};
+use crate::model::Computer;
 use crate::parse::mc::ExecutionResult;
 use crate::ui::gui::{GuiState, PopupManager};
 use crate::ui::open_in_app;
 use crate::ui::popup::PopupMessage;
 use crate::ui::window::Tool;
-use imgui::sys::igGetFontTexUvWhitePixel;
+
 use imgui::TreeNodeId::Str;
-use imgui::{im_str, ComboBox, ImStr, ImString, Io, Selectable, TreeNode, Ui};
-use sdl2::mouse::SystemCursor::No;
-use std::borrow::Cow::{Borrowed, Owned};
+use imgui::{im_str, ComboBox, ImString, Io, TreeNode, Ui};
+
+use std::borrow::Cow::Owned;
 use std::cell::RefCell;
 use std::fs::OpenOptions;
-use std::io::{Read, Write};
+use std::io::Write;
 
 pub struct TraceTool {
     converter: usize,

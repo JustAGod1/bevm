@@ -1,13 +1,12 @@
 use crate::parse::{CommandInfo, Parser};
-use nom::branch::alt;
-use nom::bytes::complete::{is_not, tag, take_till, take_while, take_while_m_n};
+
+use nom::bytes::complete::{is_not, take_while};
 use nom::character::complete::char;
-use nom::character::is_space;
-use nom::combinator::map_res;
-use nom::sequence::{preceded, terminated};
+
+use nom::sequence::preceded;
 use nom::{FindSubstring, Finish, IResult};
 use std::collections::HashMap;
-use std::io::{BufRead, BufReader, Error, Read};
+use std::io::{BufRead, BufReader, Read};
 
 pub fn parse_file<T: Read, I: CommandInfo, P: Parser<I>>(
     data: &mut T,
@@ -227,7 +226,6 @@ fn parse_line(line: &str) -> Option<DataLine> {
 #[cfg(test)]
 mod tests {
     use crate::parse::file::parse_line;
-    use core::ops::*;
 
     #[test]
     fn parse() {

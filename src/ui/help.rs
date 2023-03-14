@@ -3,8 +3,8 @@ use crate::ui::gui::Theme::{Classic, Dark, Light};
 use crate::ui::open_in_app;
 use crate::ui::popup::PopupMessage;
 use crate::ui::window::Tool;
-use imgui::StyleColor::Header;
-use imgui::{im_str, Context, ImString, Io, MenuItem, Ui};
+
+use imgui::{im_str, ImString, Io, MenuItem, Ui};
 
 pub struct HelpTool {
     text: &'static str,
@@ -17,7 +17,7 @@ impl HelpTool {
 }
 
 impl Tool for HelpTool {
-    fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
+    fn draw(&mut self, ui: &Ui, _io: &Io, state: &mut GuiState) {
         ui.menu_bar(|| {
             ui.menu(im_str!("Полезные ссылочки"), true, || {
                 if MenuItem::new(im_str!("GitHub")).build(ui) {

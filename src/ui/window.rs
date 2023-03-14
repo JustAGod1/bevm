@@ -1,7 +1,6 @@
-use crate::model::Computer;
-use crate::ui::gui::{Gui, GuiState, PopupManager};
-use crate::ui::{relative_height, relative_width};
-use imgui::{im_str, ChildWindow, ImStr, ImString, Io, MenuItem, Ui};
+use crate::ui::gui::GuiState;
+
+use imgui::{ChildWindow, ImString, Io, MenuItem, Ui};
 
 pub trait Tool {
     fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState);
@@ -57,7 +56,7 @@ impl Tool for WindowTool {
 }
 
 impl WindowTool {
-    pub fn single_tool<T>(width: i32, height: i32, tool_name: &'static str, tool: T) -> WindowTool
+    pub fn single_tool<T>(_width: i32, _height: i32, tool_name: &'static str, tool: T) -> WindowTool
     where
         T: Tool,
         T: 'static,

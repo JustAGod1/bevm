@@ -1,10 +1,10 @@
-use crate::model::{Computer, Memory, Register, Registers};
-use crate::parse::general::{GeneralCommandInfo, GeneralParser};
+use crate::model::Registers;
+
 use crate::parse::mc::ExecutionResult;
-use crate::ui::gui::{Gui, GuiState, PopupManager};
+use crate::ui::gui::GuiState;
 use crate::ui::popup::PopupMessage;
 use crate::ui::window::Tool;
-use imgui::{im_str, ChildWindow, ImString, Io, MenuItem, TreeNode, Ui};
+use imgui::{im_str, Io, MenuItem, Ui};
 
 pub struct SmartControlsTool {
     auto_run: bool,
@@ -16,7 +16,7 @@ struct HistoryEntry {
 }
 
 impl Tool for SmartControlsTool {
-    fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
+    fn draw(&mut self, ui: &Ui, _io: &Io, state: &mut GuiState) {
         self.draw_control(state, ui);
     }
 }

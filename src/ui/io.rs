@@ -16,7 +16,7 @@ impl IOTool {
 }
 
 impl Tool for IOTool {
-    fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
+    fn draw(&mut self, ui: &Ui, _io: &Io, state: &mut GuiState) {
         let w_tok = ui.push_item_width(150.0);
 
         unsafe {

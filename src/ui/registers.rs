@@ -2,10 +2,10 @@ use crate::model::{Computer, Register};
 use crate::ui::gui::GuiState;
 use crate::ui::window::Tool;
 use imgui::sys::{
-    igBeginTable, igEndTable, igTableNextColumn, igTableNextRow, ImGuiTableFlags_BordersH,
-    ImGuiTableFlags_None, ImGuiTableRowFlags_None, ImVec2,
+    igBeginTable, igEndTable, igTableNextColumn, igTableNextRow, ImGuiTableFlags_None,
+    ImGuiTableRowFlags_None, ImVec2,
 };
-use imgui::{im_str, ImString, Io, TreeNode, Ui};
+use imgui::{im_str, ImString, Io, Ui};
 use std::os::raw::c_int;
 
 pub struct RegistersTool;
@@ -17,7 +17,7 @@ impl RegistersTool {
 }
 
 impl Tool for RegistersTool {
-    fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
+    fn draw(&mut self, ui: &Ui, _io: &Io, state: &mut GuiState) {
         fn reg_field(ui: &Ui, computer: &mut Computer, register: Register, tooltip: &str) {
             let mut content = ImString::from(register.format(computer));
             let t = ui.push_item_width(80.0);

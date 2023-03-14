@@ -2,9 +2,8 @@ use crate::bit_at;
 use crate::model::{Computer, Register};
 use crate::parse::{CommandInfo, Parser};
 use core::ops::*;
-use imgui::sys::igBeginChildFrame;
+
 use imgui::{ImString, Ui};
-use std::cell::Ref;
 
 struct RangeDescriptor {
     range: Range<u16>,

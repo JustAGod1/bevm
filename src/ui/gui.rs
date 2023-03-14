@@ -24,13 +24,10 @@ use crate::ui::status::StatusTool;
 use crate::ui::window::{Tool, WindowTool};
 
 use self::imgui::sys::ImGuiKey_Backspace;
-use self::imgui::{
-    Context, FontConfig, FontGlyphRanges, FontId, FontSource, Io, MenuItem, Style, WindowFlags,
-};
+use self::imgui::{Context, FontConfig, FontGlyphRanges, FontId, FontSource, Io};
 use self::sdl2::keyboard::Scancode;
-use self::sdl2::Sdl;
+
 use crate::ui::tracing::TraceTool;
-use std::cell::Cell;
 
 pub struct PopupManager {
     popup_delayed: Vec<Box<dyn Popup>>,
@@ -292,7 +289,6 @@ impl Gui {
         'outer: loop {
             i += 1;
             use sdl2::event::Event;
-            use sdl2::keyboard::Keycode;
 
             for event in event_pump.poll_iter() {
                 if event.is_keyboard() {}
@@ -312,7 +308,7 @@ impl Gui {
                                 .on_file_dropped(filename.as_str())
                         }
                     }
-                    Event::KeyDown { scancode, .. } | Event::KeyUp { scancode, .. } => {
+                    Event::KeyDown { scancode: _, .. } | Event::KeyUp { scancode: _, .. } => {
                         break;
                     }
                     _ => {}

@@ -1,7 +1,6 @@
-use crate::model::Computer;
-use crate::ui::gui::{Gui, GuiState, PopupManager};
+use crate::ui::gui::GuiState;
 use crate::ui::window::Tool;
-use imgui::{im_str, ChildWindow, Io, MenuItem, StyleColor, Ui};
+use imgui::{im_str, Io, MenuItem, StyleColor, Ui};
 
 pub struct LogTool {
     show_micro: bool,
@@ -18,7 +17,7 @@ impl LogTool {
 }
 
 impl Tool for LogTool {
-    fn draw(&mut self, ui: &Ui, io: &Io, gui: &mut GuiState) {
+    fn draw(&mut self, ui: &Ui, _io: &Io, gui: &mut GuiState) {
         ui.menu_bar(|| {
             if let Some(t) = ui.begin_menu(im_str!("Фильтр"), true) {
                 if MenuItem::new(im_str!("Показывать лог микрокоманд"))

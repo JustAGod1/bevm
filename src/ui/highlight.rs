@@ -11,7 +11,7 @@ impl CommandHighlightTool {
 }
 
 impl Tool for CommandHighlightTool {
-    fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
+    fn draw(&mut self, ui: &Ui, _io: &Io, state: &mut GuiState) {
         if state.current_command.is_none() {
             return;
         }

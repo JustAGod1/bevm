@@ -1,7 +1,7 @@
 use crate::parse::{CommandInfo, Parser};
-use crate::ui::centralized_text;
+
 use core::ops::*;
-use imgui::{im_str, ImString, Ui};
+use imgui::{ImString, Ui};
 use std::collections::HashMap;
 use std::rc::Rc;
 macro_rules! io_command {
@@ -482,7 +482,6 @@ impl CommandInfo for GeneralCommandInfo {
 mod tests {
     use crate::parse::general::GeneralParser;
     use crate::parse::{CommandInfo, Parser};
-    use core::ops::*;
 
     #[test]
     fn test() {

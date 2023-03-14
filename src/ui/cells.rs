@@ -1,13 +1,11 @@
-use crate::model::{Computer, Memory, MemoryCell, Register};
-use crate::parse::mc::parse;
+use crate::model::{Computer, Memory, MemoryCell};
+
 use crate::parse::{CommandInfo, Parser};
-use crate::ui::gui::{Gui, GuiState, PopupManager};
+use crate::ui::gui::GuiState;
 use crate::ui::popup::{PopupMessage, PopupParseError};
 use crate::ui::window::Tool;
 use imgui::__core::cell::RefMut;
-use imgui::{
-    im_str, ChildWindow, FocusedWidget, Id, ImString, Io, MenuItem, StyleColor, StyleVar, Ui,
-};
+use imgui::{im_str, FocusedWidget, Id, ImString, Io, MenuItem, StyleColor, StyleVar, Ui};
 use std::cell::RefCell;
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
@@ -82,7 +80,7 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> Tool for CellsTool<I
 where
     I: 'static,
 {
-    fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
+    fn draw(&mut self, ui: &Ui, _io: &Io, state: &mut GuiState) {
         let mut idx = 0u32;
 
         self.draw_menu_bar(state, ui);
@@ -345,7 +343,7 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
                     }
 
                     let pos = u16::from_str_radix(split.get(0).unwrap(), 16);
-                    if let Err(e) = pos {
+                    if let Err(_e) = pos {
                         state.popup_manager.open(PopupMessage::new(
                             "Ошибочка",
                             format!(
