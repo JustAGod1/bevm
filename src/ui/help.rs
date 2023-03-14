@@ -20,38 +20,23 @@ impl Tool for HelpTool {
     fn draw(&mut self, ui: &Ui, _io: &Io, state: &mut GuiState) {
         ui.menu_bar(|| {
             ui.menu(im_str!("Полезные ссылочки"), true, || {
-                if MenuItem::new(im_str!("GitHub")).build(ui) {
-                    if let Err(e) = open_in_app("https://github.com/JustAGod1/bevm") {
-                        state.popup_manager.open(PopupMessage::new(
-                            "Ошибочка",
-                            format!("Не смог открыть ссылку: {}", e),
-                        ))
+                for (name, url) in [
+                    (im_str!("GitHub"), "https://github.com/JustAGod1/bevm"),
+                    (im_str!("Telegram"), "https://t.me/notsofunnyhere"),
+                    (im_str!("Методичка"), "https://yadi.sk/i/brIICpYtcb3LMg"),
+                    (im_str!("Моя телега"), "https://t.me/JustAG0d"),
+                ] {
+                    if MenuItem::new(name).build(ui) {
+                        if let Err(e) = open_in_app(url) {
+                            state.popup_manager.open(PopupMessage::new(
+                                "Ошибочка",
+                                format!("Не смог открыть ссылку: {}", e),
+                            ))
+                        }
+                        return;
                     }
                 }
-                if MenuItem::new(im_str!("Telegram")).build(ui) {
-                    if let Err(e) = open_in_app("https://t.me/notsofunnyhere") {
-                        state.popup_manager.open(PopupMessage::new(
-                            "Ошибочка",
-                            format!("Не смог открыть ссылку: {}", e),
-                        ))
-                    }
-                }
-                if MenuItem::new(im_str!("Методичка")).build(ui) {
-                    if let Err(e) = open_in_app("https://yadi.sk/i/brIICpYtcb3LMg") {
-                        state.popup_manager.open(PopupMessage::new(
-                            "Ошибочка",
-                            format!("Не смог открыть ссылку: {}", e),
-                        ))
-                    }
-                }
-                if MenuItem::new(im_str!("Моя телега")).build(ui) {
-                    if let Err(e) = open_in_app("https://t.me/JustAG0d") {
-                        state.popup_manager.open(PopupMessage::new(
-                            "Ошибочка",
-                            format!("Не смог открыть ссылку: {}", e),
-                        ))
-                    }
-                } else if ui.is_item_hovered() {
+                if ui.is_item_hovered() {
                     ui.tooltip_text(
                         "Мне желательно писать по поводу идей для новых фич для этой БЭВМ.\n\n\
                     Желательно придерживаться правил общения описанных на nometa.xyz.",

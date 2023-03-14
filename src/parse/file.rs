@@ -11,13 +11,10 @@ pub fn parse_file<T: Read, I: CommandInfo, P: Parser<I>>(
     let reader = BufReader::new(data);
     let mut cursor = 0;
 
-    // let mut line_buf = String::with_capacity(128);
-
     let mut variables = HashMap::<String, u16>::new();
     let mut pre_result = Vec::<(u16, String, u16)>::new();
 
-    for (line_num, line) in reader.lines().enumerate().take(u16::MAX.into()) {
-        let line_num = line_num + 1;
+    for (line, line_num) in reader.lines().zip(1..).take(u16::MAX.into()) {
         let line = line.map_err(|x| x.to_string())?;
 
         let Some(parsed) = parse_line(line.as_str()) else {
@@ -35,9 +32,8 @@ pub fn parse_file<T: Read, I: CommandInfo, P: Parser<I>>(
                     return Err(err!(format!("Неизвестный оператор {}", name)));
                 }
 
-                let pos = match u16::from_str_radix(arg, 16) {
-                    Err(_) => return Err(err!(format!("Не могу распарсить число {}", arg))),
-                    Ok(v) => v,
+                let Ok(pos) = u16::from_str_radix(arg, 16) else {
+                    return Err(err!(format!("Не могу распарсить число {}", arg)))
                 };
 
                 if pos < cursor {
@@ -148,10 +144,8 @@ fn is_variable_name_char(ch: char) -> bool {
     return ch.is_ascii_alphabetic() || ch.is_ascii_digit();
 }
 
-// Да я притащил либу для парсинга простой хуйни
 fn parse_line(line: &str) -> Option<DataLine> {
     // remove comments
-    // std::process::exit(500);
     let line = line.split_terminator('#').next().unwrap_or(line).trim();
 
     if line.len() == 0 {
@@ -187,39 +181,27 @@ mod tests {
     fn parse_program_line_by_line() {
         let a = parse_line("$pos 10");
         assert_eq!(a, Some(DataLine::Operator("pos", "10")));
-    }
-    #[test]
-    fn parse0() {
+
         let a = parse_line("CLA $start");
         assert_eq!(a, Some(DataLine::Command("CLA", Some("start"))));
-    }
-    #[test]
-    fn parse1() {
+
         assert_eq!(
             parse_line("BMI %then"),
             Some(DataLine::Command("BMI %then", None))
         );
-    }
-    #[test]
-    fn parse2() {
+
         assert_eq!(
             parse_line("BR %start"),
             Some(DataLine::Command("BR %start", None))
         );
-    }
-    #[test]
-    fn parse3() {
+
         assert_eq!(parse_line("$pos 15"), Some(DataLine::Operator("pos", "15")));
-    }
-    #[test]
-    fn parse4() {
+
         assert_eq!(
             parse_line("ISZ 2 $then"),
             Some(DataLine::Command("ISZ 2", Some("then")))
         );
-    }
-    #[test]
-    fn parse5() {
+
         assert_eq!(
             parse_line("BR %start"),
             Some(DataLine::Command("BR %start", None))
