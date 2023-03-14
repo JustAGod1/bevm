@@ -1,16 +1,16 @@
-use std::time::SystemTime;
+use crate::parse::general::{GeneralCommandInfo, GeneralParser};
+use crate::parse::mc::{parse, ExecutionResult, McParser, MicroCommand, MicroCommandInfo};
+use crate::parse::{CommandInfo, Parser};
 use core::ops::*;
-use crate::parse::mc::{ExecutionResult, parse, McParser, MicroCommand, MicroCommandInfo};
-use crate::parse::{Parser, CommandInfo};
-use crate::parse::general::{GeneralParser, GeneralCommandInfo};
-use std::rc::Rc;
 use std::cell::RefCell;
-use std::io::{BufReader, BufRead};
+use std::io::{BufRead, BufReader};
 use std::marker::PhantomData;
+use std::rc::Rc;
+use std::time::SystemTime;
 
 #[derive(Eq, PartialEq)]
 pub enum Register {
-     McCounter,
+    McCounter,
 
     Status,
 
@@ -22,18 +22,16 @@ pub enum Register {
     Command,
     Data,
     CommandCounter,
-    Counter
+    Counter,
 }
 
 impl Register {
-
     pub fn format(&self, computer: &Computer) -> String {
         match self {
             Register::McCounter => format!("{:0>2X}", computer.registers.r_micro_command_counter),
             Register::Buffer => format!("{:0>5X}", computer.registers.r_buffer),
-            _ => format!("{:0>4X}", self.get(computer))
+            _ => format!("{:0>4X}", self.get(computer)),
         }
-
     }
 
     pub fn mnemonic(&self) -> String {
@@ -46,15 +44,15 @@ impl Register {
             Register::Command => "РК",
             Register::Data => "РД",
             Register::CommandCounter => "СК",
-            Register::Counter => "А"
-        }.to_string()
-
+            Register::Counter => "А",
+        }
+        .to_string()
     }
 
     pub fn assign_wide(&self, computer: &mut Computer, data: u32) {
         match self {
             Register::Buffer => computer.registers.r_buffer = data.bitand(0x1FFFF),
-            _ => self.assign(computer, data as u16)
+            _ => self.assign(computer, data as u16),
         }
     }
 
@@ -68,16 +66,15 @@ impl Register {
             Register::CommandCounter => computer.registers.r_command_counter = data.bitand(0x7FF),
             Register::Counter => computer.registers.r_counter = data,
             Register::McCounter => computer.registers.r_micro_command_counter = data as u8,
-            Register::Buffer => computer.registers.r_buffer = data as u32
+            Register::Buffer => computer.registers.r_buffer = data as u32,
         }
     }
 
     pub fn get_wide(&self, computer: &Computer) -> u32 {
         match self {
             Register::Buffer => computer.registers.r_buffer,
-            _ => self.get(computer) as u32
+            _ => self.get(computer) as u32,
         }
-
     }
     pub fn get(&self, computer: &Computer) -> u16 {
         match self {
@@ -89,7 +86,7 @@ impl Register {
             Register::CommandCounter => computer.registers.r_command_counter,
             Register::Counter => computer.registers.r_counter,
             Register::McCounter => computer.registers.r_micro_command_counter as u16,
-            Register::Buffer => computer.registers.r_buffer as u16
+            Register::Buffer => computer.registers.r_buffer as u16,
         }
     }
 }
@@ -97,17 +94,17 @@ impl Register {
 #[derive(Clone)]
 pub struct Registers {
     pub r_micro_command_counter: u8, // СчМК. текущая микрокомана
-    pub r_status: u16, // РС - регистр состояния. в разрядах биты статуса
+    pub r_status: u16,               // РС - регистр состояния. в разрядах биты статуса
 
     pub r_micro_command: u16, // РМК. регистр микро команды.
     // type is actually u17
-    pub r_buffer: u32, // БР. буфферный регистр. мк
+    pub r_buffer: u32,  // БР. буфферный регистр. мк
     pub r_address: u16, // РА - регистр адреса. мк
     pub r_command: u16, // РК - регистр команды. мк
-    pub r_data: u16, // РД - регистр данных. мк
+    pub r_data: u16,    // РД - регистр данных. мк
 
     pub r_command_counter: u16, // СК - счетчик команд. текущая команда эвм
-    pub r_counter: u16 // А
+    pub r_counter: u16,         // А
 }
 
 macro_rules! status_flag {
@@ -116,10 +113,11 @@ macro_rules! status_flag {
             if v {
                 self.r_status = self.r_status.bitor(1u16.shl($pos as u16) as u16);
             } else {
-                self.r_status = self.r_status.bitand(1u16.shl($pos as u16).bitxor(0xFFFF) as u16);
+                self.r_status = self
+                    .r_status
+                    .bitand(1u16.shl($pos as u16).bitxor(0xFFFF) as u16);
             }
         }
-
 
         pub fn $get(&self) -> bool {
             self.r_status.bitand(1u16.shl($pos)) != 0u16
@@ -139,8 +137,8 @@ impl Registers {
             r_address: 0,
             r_command: 0,
             r_data: 0,
-            r_counter: 0
-        }
+            r_counter: 0,
+        };
     }
 
     status_flag!(0, set_overflow, get_overflow);
@@ -153,16 +151,14 @@ impl Registers {
     status_flag!(8, set_program_mode, get_program_mode);
     status_flag!(11, set_execute_by_tick, get_execute_by_tick);
     status_flag!(12, set_io, get_io);
-
-
 }
 
 #[derive(Clone)]
-pub struct Memory<I: CommandInfo,P: Parser<I>> {
+pub struct Memory<I: CommandInfo, P: Parser<I>> {
     pub parser: P,
     pub data: Vec<MemoryCell>,
     pub name: &'static str,
-    phantom: PhantomData<I>
+    phantom: PhantomData<I>,
 }
 
 #[derive(Clone)]
@@ -170,17 +166,16 @@ pub struct MemoryCell {
     data: u16,
     last_touched: SystemTime,
     pub mnemonic: Option<String>,
-    pub name: Option<String>
+    pub name: Option<String>,
 }
 
 impl MemoryCell {
-    pub fn new() -> MemoryCell
-    {
+    pub fn new() -> MemoryCell {
         MemoryCell {
             data: 0,
             last_touched: SystemTime::UNIX_EPOCH,
             mnemonic: None,
-            name: None
+            name: None,
         }
     }
 
@@ -190,7 +185,7 @@ impl MemoryCell {
     }
 
     pub fn get(&self) -> u16 {
-        return self.data
+        return self.data;
     }
 }
 
@@ -198,18 +193,21 @@ pub struct LogEntry {
     pub command_counter: u16,
     pub micro_counter: u8,
     pub micro_command: bool,
-    pub info: String
+    pub info: String,
 }
 
 #[derive(Copy, Clone)]
 pub struct IOCell {
     pub data: u8,
-    pub ready: bool
+    pub ready: bool,
 }
 
 impl IOCell {
     fn new() -> IOCell {
-        IOCell { data: 0, ready: false }
+        IOCell {
+            data: 0,
+            ready: false,
+        }
     }
 }
 
@@ -218,11 +216,10 @@ pub struct Computer {
     pub general_memory: Rc<RefCell<Memory<GeneralCommandInfo, GeneralParser>>>,
     pub mc_memory: Rc<RefCell<Memory<MicroCommandInfo, McParser>>>,
     pub io_devices: [IOCell; 16],
-    logs: Vec<LogEntry>
+    logs: Vec<LogEntry>,
 }
 
 impl Computer {
-
     fn mem(len: usize) -> Vec<MemoryCell> {
         let mut result = Vec::<MemoryCell>::new();
 
@@ -239,32 +236,47 @@ impl Computer {
         let num = opcode.bitand(0xF) as usize;
         if opcode.bitand(0x0300) == 0x0300 {
             let data = self.registers.r_counter.bitand(0xFF) as u8;
-            self.log(false, format!("Перенес значение {:0>2X} из младших разрядов аккамулятора в ВУ номер {}", data, num));
+            self.log(
+                false,
+                format!(
+                    "Перенес значение {:0>2X} из младших разрядов аккамулятора в ВУ номер {}",
+                    data, num
+                ),
+            );
             self.io_devices.get_mut(num).unwrap().data = data;
-        }
-        else if opcode.bitand(0x0200) == 0x0200 {
+        } else if opcode.bitand(0x0200) == 0x0200 {
             self.registers.r_counter = self.registers.r_counter.bitand(0xFF00);
             let data = self.io_devices.get_mut(num as usize).unwrap().data as u16;
             self.registers.r_counter = self.registers.r_counter.bitor(data);
-            self.log(false, format!("Перенес значение {:0>2X} из  ВУ номер {} в младшие разряды аккамулятора", data, num));
-        }
-        else if opcode.bitand(0x0100) == 0x0100 {
-            self.registers.set_io_ready(self.io_devices.get(num).unwrap().ready);
-            self.log(false, format!("Опросил ВУ номер {} на предмет готовности", num));
+            self.log(
+                false,
+                format!(
+                    "Перенес значение {:0>2X} из  ВУ номер {} в младшие разряды аккамулятора",
+                    data, num
+                ),
+            );
+        } else if opcode.bitand(0x0100) == 0x0100 {
+            self.registers
+                .set_io_ready(self.io_devices.get(num).unwrap().ready);
+            self.log(
+                false,
+                format!("Опросил ВУ номер {} на предмет готовности", num),
+            );
 
             if self.registers.get_io_ready() {
-                self.log(false, format!("ВУ номер {} оказалось готовым. Увеличил СК на единицу", num));
+                self.log(
+                    false,
+                    format!("ВУ номер {} оказалось готовым. Увеличил СК на единицу", num),
+                );
                 self.registers.r_command_counter += 1;
             }
-        }
-        else {
+        } else {
             self.log(false, format!("Сбросил флаг готовности ВУ номер {}", num));
             self.io_devices[num].ready = false;
         }
 
         self.log(true, "Сбросил флаг ВВОД-ВВЫОД".to_string());
         self.registers.set_io(false);
-
     }
 
     pub fn reset_memory(&mut self) {
@@ -275,15 +287,18 @@ impl Computer {
         for x in &mut self.general_memory.borrow_mut().data {
             x.data = 0;
         }
-        for line in BufReader::new(data).lines().map(|r| r.unwrap())
-        {
+        for line in BufReader::new(data).lines().map(|r| r.unwrap()) {
             let splitted = line.split(" ").collect::<Vec<&str>>();
             let address = u16::from_str_radix(splitted.get(0).unwrap(), 16).unwrap();
             let value = u16::from_str_radix(splitted.get(1).unwrap(), 16).unwrap();
 
-            self.mc_memory.borrow_mut().data.get_mut(address as usize).unwrap().set(value);
+            self.mc_memory
+                .borrow_mut()
+                .data
+                .get_mut(address as usize)
+                .unwrap()
+                .set(value);
         }
-
     }
 
     pub fn new() -> Computer {
@@ -294,15 +309,15 @@ impl Computer {
                 data: Self::mem(2048),
                 parser: GeneralParser::new(),
                 name: "general",
-                phantom: PhantomData::default()
+                phantom: PhantomData::default(),
             })),
             mc_memory: Rc::new(RefCell::new(Memory {
                 data: Self::mem(256),
                 parser: McParser::new(),
                 name: "mpu",
-                phantom: PhantomData::default()
+                phantom: PhantomData::default(),
             })),
-            logs: Vec::<LogEntry>::new()
+            logs: Vec::<LogEntry>::new(),
         };
         result.reset_memory();
 
@@ -313,14 +328,12 @@ impl Computer {
         if self.logs.len() > 100 {
             self.logs.remove(0);
         }
-        self.logs.push(
-            LogEntry {
-                micro_counter: self.registers.r_micro_command_counter,
-                command_counter: self.registers.r_command_counter,
-                micro_command,
-                info
-            }
-        )
+        self.logs.push(LogEntry {
+            micro_counter: self.registers.r_micro_command_counter,
+            command_counter: self.registers.r_command_counter,
+            micro_command,
+            info,
+        })
     }
 
     pub fn clear_logs(&mut self) {
@@ -332,7 +345,13 @@ impl Computer {
     }
 
     pub fn micro_step(&mut self) -> ExecutionResult {
-        let opcode = self.mc_memory.borrow_mut().data.get(self.registers.r_micro_command_counter as usize).unwrap().get();
+        let opcode = self
+            .mc_memory
+            .borrow_mut()
+            .data
+            .get(self.registers.r_micro_command_counter as usize)
+            .unwrap()
+            .get();
         let cmd = parse(opcode);
         self.registers.r_micro_command = opcode;
         let result = cmd.run(self);
@@ -341,5 +360,4 @@ impl Computer {
         }
         result
     }
-
 }

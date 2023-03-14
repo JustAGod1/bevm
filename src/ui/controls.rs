@@ -1,18 +1,18 @@
 use crate::model::{Computer, Memory, Register, Registers};
-use imgui::{Ui, ChildWindow, TreeNode, im_str, ImString, Io, MenuItem};
 use crate::parse::general::{GeneralCommandInfo, GeneralParser};
 use crate::parse::mc::ExecutionResult;
-use crate::ui::gui::{PopupManager, Gui, GuiState};
-use crate::ui::window::Tool;
+use crate::ui::gui::{Gui, GuiState, PopupManager};
 use crate::ui::popup::PopupMessage;
+use crate::ui::window::Tool;
+use imgui::{im_str, ChildWindow, ImString, Io, MenuItem, TreeNode, Ui};
 
 pub struct SmartControlsTool {
     auto_run: bool,
-    history: Vec<HistoryEntry>
+    history: Vec<HistoryEntry>,
 }
 
 struct HistoryEntry {
-    registers: Registers
+    registers: Registers,
 }
 
 impl Tool for SmartControlsTool {
@@ -25,13 +25,13 @@ impl SmartControlsTool {
     pub fn new() -> SmartControlsTool {
         SmartControlsTool {
             auto_run: false,
-            history: vec![]
+            history: vec![],
         }
     }
 
     fn make_history_entry(&mut self, state: &mut GuiState) {
         let entry = HistoryEntry {
-            registers: state.computer.registers.clone()
+            registers: state.computer.registers.clone(),
         };
 
         self.history.push(entry);
@@ -66,7 +66,7 @@ impl SmartControlsTool {
 
         ui.same_line(0.0);
 
-        if ui.button(im_str!("Большой шаг"), [w,h]) {
+        if ui.button(im_str!("Большой шаг"), [w, h]) {
             self.make_history_entry(state);
             state.computer.registers.set_execute_by_tick(false);
             state.computer.registers.set_lever(false);
@@ -79,7 +79,7 @@ impl SmartControlsTool {
 
         ui.same_line(0.0);
 
-        if ui.button(im_str!("Назад"), [w, h]) && !self.history.is_empty(){
+        if ui.button(im_str!("Назад"), [w, h]) && !self.history.is_empty() {
             let entry = self.history.pop().unwrap();
             state.computer.registers = entry.registers;
 
@@ -89,7 +89,7 @@ impl SmartControlsTool {
             ui.tooltip_text("Возвращает регистры к состоянию в котором они были до того как вы нажали последнюю кнопку.")
         }
 
-        if ui.button(im_str!("Пуск"), [w,h]) {
+        if ui.button(im_str!("Пуск"), [w, h]) {
             self.make_history_entry(state);
             state.computer.registers.r_micro_command_counter = 0xA8;
             state.computer.registers.set_execute_by_tick(false);
@@ -100,7 +100,7 @@ impl SmartControlsTool {
             ui.tooltip_text("Устанавливает флаг \"Исполнение\" в 0\nУстанавливает флаг \"Состояние тумблера\" в 1.\nУстанавливается флаг \"Программа\" в 1.\nУстанавливает СчМК в 0A8 то есть сбрасывает состояние регистров ЭВМ\nЭВМ начинает самостоятельно выполнять команду за командой.")
         }
         ui.same_line(0.0);
-        if ui.button(im_str!("Продолжить"), [w,h]) {
+        if ui.button(im_str!("Продолжить"), [w, h]) {
             self.make_history_entry(state);
             state.computer.registers.set_execute_by_tick(false);
             state.computer.registers.set_lever(true);
@@ -110,7 +110,7 @@ impl SmartControlsTool {
             ui.tooltip_text("Устанавливает флаг \"Исполнение\" в 0\nУстанавливает флаг \"Состояние тумблера\" в 1.\nУстанавливается флаг \"Программа\" в 1.\nНе изменяет состояние регистров ЭВМ\nЭВМ начинает самостоятельно выполнять команду за командой.")
         }
         ui.same_line(0.0);
-        if ui.button(im_str!("Прыжок"), [w,h]) {
+        if ui.button(im_str!("Прыжок"), [w, h]) {
             state.jump_requested = true
         }
         if ui.is_item_hovered() {
@@ -124,7 +124,10 @@ impl SmartControlsTool {
             for _ in 0..100 {
                 if matches!(state.computer.micro_step(), ExecutionResult::HALTED) {
                     if state.computer.registers.get_lever() {
-                        state.popup_manager.open(PopupMessage::new("Остановочка","ЭВМ завершила свою работу"));
+                        state.popup_manager.open(PopupMessage::new(
+                            "Остановочка",
+                            "ЭВМ завершила свою работу",
+                        ));
                     }
                     state.computer.registers.set_lever(false);
                     self.auto_run = false;

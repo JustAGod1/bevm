@@ -1,7 +1,7 @@
-use crate::ui::window::Tool;
-use imgui::{Ui, ChildWindow, im_str, Io};
 use crate::ui::gui::GuiState;
-use crate::ui::{relative_width, relative_height};
+use crate::ui::window::Tool;
+use crate::ui::{relative_height, relative_width};
+use imgui::{im_str, ChildWindow, Io, Ui};
 
 struct ToolContainer {
     len: f32,
@@ -60,13 +60,18 @@ impl LayoutTool {
         }
     }
 
-    fn draw_tool(container: &mut ToolContainer, w: f32, h: f32, ui: &Ui, io: &Io, state: &mut GuiState) {
+    fn draw_tool(
+        container: &mut ToolContainer,
+        w: f32,
+        h: f32,
+        ui: &Ui,
+        io: &Io,
+        state: &mut GuiState,
+    ) {
         ChildWindow::new("cont")
             .border(false)
             .size([w, h])
-            .build(ui, || {
-                container.tool.draw(ui, io, state)
-            });
+            .build(ui, || container.tool.draw(ui, io, state));
     }
 
     fn draw_vertical(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
@@ -75,12 +80,19 @@ impl LayoutTool {
         for container in &mut self.tools {
             let id_tok = ui.push_id(i as i32);
             container.len = relative_height(container.len, ui);
-            Self::draw_tool(container, 0.0, if i == len - 1 { 0.0} else {container.len }, ui, io, state);
+            Self::draw_tool(
+                container,
+                0.0,
+                if i == len - 1 { 0.0 } else { container.len },
+                ui,
+                io,
+                state,
+            );
             if i < len - 1 {
                 ui.button(im_str!("s"), [relative_width(0.0, ui), 4.0]);
                 if ui.is_item_active() {
                     let delta = *io.mouse_delta.get(1).unwrap();
-                    container.len+= delta;
+                    container.len += delta;
                     container.len = container.len.max(20.0);
                 }
             }
@@ -99,7 +111,7 @@ impl LayoutTool {
                 ui.button(im_str!("s"), [4.0, relative_height(0.0, ui)]);
                 if ui.is_item_active() {
                     let delta = *io.mouse_delta.get(0).unwrap();
-                    container.len+= delta;
+                    container.len += delta;
                     container.len = container.len.max(20.0);
                 }
                 ui.same_line(0.0);
@@ -117,7 +129,9 @@ impl LayoutTool {
     }
 
     pub fn append<T>(mut self, len: i32, tool: T) -> Self
-        where T: Tool, T: 'static
+    where
+        T: Tool,
+        T: 'static,
     {
         self.tools.push(ToolContainer::new(len as f32, tool));
         return self;

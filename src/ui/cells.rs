@@ -1,16 +1,17 @@
-use crate::model::{Computer, MemoryCell, Memory, Register};
-use imgui::{Ui, ChildWindow, StyleColor, Id, im_str, ImString, MenuItem, FocusedWidget, StyleVar, Io};
+use crate::model::{Computer, Memory, MemoryCell, Register};
 use crate::parse::mc::parse;
-use crate::parse::{Parser, CommandInfo};
+use crate::parse::{CommandInfo, Parser};
+use crate::ui::gui::{Gui, GuiState, PopupManager};
+use crate::ui::popup::{PopupMessage, PopupParseError};
 use crate::ui::window::Tool;
-use crate::ui::gui::{PopupManager, Gui, GuiState};
-use std::rc::Rc;
-use std::cell::RefCell;
 use imgui::__core::cell::RefMut;
-use crate::ui::popup::{PopupParseError, PopupMessage};
-use std::fs::{OpenOptions, File};
-use std::io::{Write, BufReader, BufRead};
-
+use imgui::{
+    im_str, ChildWindow, FocusedWidget, Id, ImString, Io, MenuItem, StyleColor, StyleVar, Ui,
+};
+use std::cell::RefCell;
+use std::fs::{File, OpenOptions};
+use std::io::{BufRead, BufReader, Write};
+use std::rc::Rc;
 
 #[derive(PartialEq, Eq)]
 enum CellRepresentation {
@@ -30,10 +31,12 @@ impl CellRepresentation {
         let cell = cell;
         let mut data = ImString::from(format!("{:0>4X}", cell.get()));
         let width_t = ui.push_item_width(70.0);
-        if ui.input_text(im_str!(""), &mut data)
+        if ui
+            .input_text(im_str!(""), &mut data)
             .chars_hexadecimal(true)
             .chars_noblank(true)
-            .build() {
+            .build()
+        {
             let data = data.to_str();
             if let Ok(parsed) = u16::from_str_radix(data, 16) {
                 cell.set(parsed)
@@ -45,10 +48,12 @@ impl CellRepresentation {
         let cell = cell;
         let mut data = ImString::from(format!("{:0>16b}", cell.get()));
         let width_t = ui.push_item_width(160.0);
-        if ui.input_text(im_str!(""), &mut data)
+        if ui
+            .input_text(im_str!(""), &mut data)
             .chars_decimal(true)
             .chars_noblank(true)
-            .build() {
+            .build()
+        {
             let data = data.to_str();
             if let Ok(parsed) = u16::from_str_radix(data, 2) {
                 cell.set(parsed)
@@ -65,7 +70,8 @@ impl CellRepresentation {
 }
 
 pub struct CellsTool<I: CommandInfo, P: Parser<I>, F>
-    where F: Fn(&Computer) -> u16
+where
+    F: Fn(&Computer) -> u16,
 {
     page: Rc<RefCell<Memory<I, P>>>,
     counter_register: F,
@@ -73,13 +79,13 @@ pub struct CellsTool<I: CommandInfo, P: Parser<I>, F>
 }
 
 impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> Tool for CellsTool<I, P, F>
-    where I: 'static
+where
+    I: 'static,
 {
     fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
         let mut idx = 0u32;
 
         self.draw_menu_bar(state, ui);
-
 
         let s_token = ui.push_style_var(StyleVar::ChildBorderSize(0.0));
 
@@ -87,7 +93,8 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> Tool for CellsTool<I
 
         let mut next_rev_focused = false;
 
-        let (parser, mut data) = RefMut::map_split(self.page.borrow_mut(), |r| (&mut r.parser, &mut r.data));
+        let (parser, mut data) =
+            RefMut::map_split(self.page.borrow_mut(), |r| (&mut r.parser, &mut r.data));
 
         let mut focused: Option<I> = None;
 
@@ -112,7 +119,6 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> Tool for CellsTool<I
                 focused = Some(parser.parse(cell.get()))
             }
 
-
             ui.same_line(0.0);
             let command = parser.parse(cell.get());
 
@@ -123,7 +129,8 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> Tool for CellsTool<I
                     next_rev_focused = false
                 }
                 content.push_str(command.mnemonic().as_str());
-                if ui.input_text(im_str!("###mnemonic"), &mut content)
+                if ui
+                    .input_text(im_str!("###mnemonic"), &mut content)
                     .callback_always(false)
                     .enter_returns_true(true)
                     .build()
@@ -133,9 +140,9 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> Tool for CellsTool<I
                             next_rev_focused = true;
                             cell.set(opcode);
                         }
-                        Err(msg) => {
-                            state.popup_manager.open(PopupParseError::new(content.to_string(), msg.to_string()))
-                        }
+                        Err(msg) => state
+                            .popup_manager
+                            .open(PopupParseError::new(content.to_string(), msg.to_string())),
                     }
                 }
 
@@ -150,11 +157,12 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> Tool for CellsTool<I
             idx += 1;
         }
 
-
         if focused.is_some() {
             state.current_command = Some(Box::new(focused.unwrap()));
         } else {
-            state.current_command = Some(Box::new(parser.parse(data.get(current_executed as usize).unwrap().get())));
+            state.current_command = Some(Box::new(
+                parser.parse(data.get(current_executed as usize).unwrap().get()),
+            ));
         }
 
         s_token.pop(ui);
@@ -179,17 +187,19 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
         })
     }
 
-
     fn on_save_to_file(&mut self, state: &mut GuiState) {
         let filename = match nfd::open_pick_folder(None) {
             Ok(r) => match r {
-                nfd::Response::Okay(f) => {
-                    f
+                nfd::Response::Okay(f) => f,
+                _ => {
+                    return;
                 }
-                _ => {return;}
-            }
+            },
             Err(e) => {
-                state.popup_manager.open(PopupMessage::new("Ошибка выбора папки", format!("Не могу открыть окно выбора папки: {}", e.to_string())));
+                state.popup_manager.open(PopupMessage::new(
+                    "Ошибка выбора папки",
+                    format!("Не могу открыть окно выбора папки: {}", e.to_string()),
+                ));
                 return;
             }
         };
@@ -197,8 +207,14 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
         let filename = format!("{}/{}.mm", filename, self.page.borrow().name);
 
         match self.save_to_file(filename.as_str()) {
-            Ok(_) => state.popup_manager.open(PopupMessage::new("Успех", format!("Успешно сохранил в файл {}", filename))),
-            Err(e) => state.popup_manager.open(PopupMessage::new("Провал", format!("Не могу сохранить в файл \"{}\": {}", filename, e)))
+            Ok(_) => state.popup_manager.open(PopupMessage::new(
+                "Успех",
+                format!("Успешно сохранил в файл {}", filename),
+            )),
+            Err(e) => state.popup_manager.open(PopupMessage::new(
+                "Провал",
+                format!("Не могу сохранить в файл \"{}\": {}", filename, e),
+            )),
         }
     }
 
@@ -210,7 +226,6 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
             .truncate(true)
             .open(file)
             .map_err(|e| e.to_string())?;
-
 
         let mut s = String::new();
         let mut prev_zero = true;
@@ -242,25 +257,29 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
         Ok(())
     }
 
-    fn choose_file(state: &mut GuiState, filter: Option<&str>) -> Option<File>{
+    fn choose_file(state: &mut GuiState, filter: Option<&str>) -> Option<File> {
         let file_name = match nfd::open_file_dialog(filter, None) {
             Ok(r) => match r {
-                nfd::Response::Okay(f) => {
-                    f
+                nfd::Response::Okay(f) => f,
+                _ => {
+                    return None;
                 }
-                _ => { return None; }
-            }
+            },
             Err(e) => {
-                state.popup_manager.open(PopupMessage::new("Ошибка выбора файла", format!("Не могу открыть окно выбора файла: {}", e.to_string())));
+                state.popup_manager.open(PopupMessage::new(
+                    "Ошибка выбора файла",
+                    format!("Не могу открыть окно выбора файла: {}", e.to_string()),
+                ));
                 return None;
             }
         };
 
-
         let f = match File::open(file_name) {
             Ok(f) => f,
             Err(e) => {
-                state.popup_manager.open(PopupMessage::new("Ошибка открытия файла", e.to_string()));
+                state
+                    .popup_manager
+                    .open(PopupMessage::new("Ошибка открытия файла", e.to_string()));
                 return None;
             }
         };
@@ -270,17 +289,19 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
 
     fn on_load_from_file(&mut self, state: &mut GuiState) {
         let f = Self::choose_file(state, Some("mm"));
-        if f.is_none() { return; }
+        if f.is_none() {
+            return;
+        }
 
         let mut f = f.unwrap();
 
-
         let parse_result = crate::parse::file::parse_file(&mut f, &self.page.borrow().parser, 0xFF);
-
 
         if parse_result.is_err() {
             let msg = parse_result.unwrap_err();
-            state.popup_manager.open(PopupMessage::new("Ошибка во время парсинга", msg));
+            state
+                .popup_manager
+                .open(PopupMessage::new("Ошибка во время парсинга", msg));
             return;
         }
 
@@ -298,7 +319,9 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
 
     fn load_bpc(&mut self, state: &mut GuiState) {
         let f = Self::choose_file(state, Some("bpc"));
-        if f.is_none() { return; }
+        if f.is_none() {
+            return;
+        }
 
         let f = f.unwrap();
 
@@ -308,19 +331,28 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
 
         let mut line_num = 0;
         for line in BufReader::new(f).lines() {
-            line_num+=1;
+            line_num += 1;
             match line {
                 Ok(line) => {
                     let split: Vec<&str> = line.split(" ").collect();
 
                     if split.len() < 2 {
-                        state.popup_manager.open(PopupMessage::new("Ошибочка", format!("Неверный формат({}) на строчке {}", line, line_num)));
+                        state.popup_manager.open(PopupMessage::new(
+                            "Ошибочка",
+                            format!("Неверный формат({}) на строчке {}", line, line_num),
+                        ));
                         return;
                     }
 
-                    let pos = u16::from_str_radix(split.get(0).unwrap(),16);
+                    let pos = u16::from_str_radix(split.get(0).unwrap(), 16);
                     if let Err(e) = pos {
-                        state.popup_manager.open(PopupMessage::new("Ошибочка", format!("Не могу распарсить позицию {} на строчке {}", split[0], line_num)));
+                        state.popup_manager.open(PopupMessage::new(
+                            "Ошибочка",
+                            format!(
+                                "Не могу распарсить позицию {} на строчке {}",
+                                split[0], line_num
+                            ),
+                        ));
                         return;
                     }
                     let pos = pos.unwrap();
@@ -333,14 +365,22 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
 
                     let cmd = u16::from_str_radix(cmd_str, 16);
                     if let Err(_) = cmd {
-                        state.popup_manager.open(PopupMessage::new("Ошибочка", format!("Не могу распарсить команду {} на строчке {}", cmd_str, line_num)));
+                        state.popup_manager.open(PopupMessage::new(
+                            "Ошибочка",
+                            format!(
+                                "Не могу распарсить команду {} на строчке {}",
+                                cmd_str, line_num
+                            ),
+                        ));
                         return;
                     }
                     let cmd = cmd.unwrap();
 
                     parse_result.push((pos, cmd))
-                },
-                Err(e) => state.popup_manager.open(PopupMessage::new("Ошибочка", e.to_string()))
+                }
+                Err(e) => state
+                    .popup_manager
+                    .open(PopupMessage::new("Ошибочка", e.to_string())),
             }
         }
 
@@ -356,8 +396,6 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
         if let Some(pos) = start_pos {
             state.computer.registers.r_command_counter = pos;
         }
-
-
     }
 
     fn draw_file_actions(&mut self, state: &mut GuiState, ui: &Ui) {
@@ -375,7 +413,6 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
             token.end(ui)
         }
     }
-
 
     fn draw_representation_selection(&mut self, ui: &Ui) {
         if let Some(token) = ui.begin_menu(im_str!("Представление ячеек"), true) {

@@ -4,10 +4,9 @@ extern crate imgui_opengl_renderer;
 extern crate imgui_sdl2;
 extern crate sdl2;
 
-
 use std::time::Instant;
 
-use imgui::{Condition, im_str, Ui, Window};
+use imgui::{im_str, Condition, Ui, Window};
 use sdl2::video::Window as SDLWindow;
 
 use crate::model::Computer;
@@ -24,12 +23,14 @@ use crate::ui::registers::RegistersTool;
 use crate::ui::status::StatusTool;
 use crate::ui::window::{Tool, WindowTool};
 
-use self::imgui::{Context, FontConfig, FontGlyphRanges, FontId, FontSource, MenuItem, WindowFlags, Io, Style};
 use self::imgui::sys::ImGuiKey_Backspace;
+use self::imgui::{
+    Context, FontConfig, FontGlyphRanges, FontId, FontSource, Io, MenuItem, Style, WindowFlags,
+};
 use self::sdl2::keyboard::Scancode;
+use self::sdl2::Sdl;
 use crate::ui::tracing::TraceTool;
 use std::cell::Cell;
-use self::sdl2::Sdl;
 
 pub struct PopupManager {
     popup_delayed: Vec<Box<dyn Popup>>,
@@ -42,8 +43,11 @@ impl PopupManager {
         }
     }
 
-
-    pub fn open<P>(&mut self, popup: P) where P: Popup, P: 'static {
+    pub fn open<P>(&mut self, popup: P)
+    where
+        P: Popup,
+        P: 'static,
+    {
         self.popup_delayed.push(Box::new(popup));
     }
 }
@@ -56,7 +60,7 @@ pub struct GuiState {
     pub theme_requested: Option<Theme>,
     pub popup_manager: PopupManager,
     pub current_command: Option<Box<dyn CommandInfo>>,
-    pub jump_requested: bool
+    pub jump_requested: bool,
 }
 
 impl GuiState {
@@ -69,7 +73,7 @@ impl GuiState {
             computer,
             popup_manager: PopupManager::new(),
             current_command: None,
-            jump_requested: false
+            jump_requested: false,
         }
     }
 }
@@ -90,18 +94,25 @@ impl Gui {
     pub fn new(computer: Computer) -> Gui {
         return Gui {
             popup: None,
-            content:
-            LayoutTool::new_vertical("root")
+            content: LayoutTool::new_vertical("root")
                 .append(
                     -210,
                     LayoutTool::new_horizontal("main")
                         .append(
                             250,
-                            WindowTool::new(
-                                "mem",
-                            )
-                                .append("Основная память", CellsTool::new((&computer.general_memory).clone(), |c| c.registers.r_command_counter))
-                                .append("Память МПУ", CellsTool::new((&computer.mc_memory).clone(), |c| c.registers.r_micro_command_counter as u16)),
+                            WindowTool::new("mem")
+                                .append(
+                                    "Основная память",
+                                    CellsTool::new((&computer.general_memory).clone(), |c| {
+                                        c.registers.r_command_counter
+                                    }),
+                                )
+                                .append(
+                                    "Память МПУ",
+                                    CellsTool::new((&computer.mc_memory).clone(), |c| {
+                                        c.registers.r_micro_command_counter as u16
+                                    }),
+                                ),
                         )
                         .append(
                             0,
@@ -109,13 +120,15 @@ impl Gui {
                                 .append(
                                     250,
                                     WindowTool::single_tool(
-                                        0, 250,
+                                        0,
+                                        250,
                                         "Состояние ЭВМ",
                                         LayoutTool::new_horizontal("regandstat")
                                             .append(
                                                 300,
                                                 WindowTool::single_tool(
-                                                    300, 0,
+                                                    300,
+                                                    0,
                                                     "Регистры",
                                                     RegistersTool::new(),
                                                 ),
@@ -123,7 +136,8 @@ impl Gui {
                                             .append(
                                                 0,
                                                 WindowTool::single_tool(
-                                                    0, 0,
+                                                    0,
+                                                    0,
                                                     "Разбор регистра статуса (РС)",
                                                     StatusTool::new(),
                                                 ),
@@ -136,12 +150,15 @@ impl Gui {
                                         .append(
                                             335,
                                             WindowTool::single_tool(
-                                                315, 0,
-                                                "Панель управления", LayoutTool::new_vertical("execandio")
+                                                315,
+                                                0,
+                                                "Панель управления",
+                                                LayoutTool::new_vertical("execandio")
                                                     .append(
                                                         135,
                                                         WindowTool::single_tool(
-                                                            0, 135,
+                                                            0,
+                                                            135,
                                                             "Управление исполнением",
                                                             SmartControlsTool::new(),
                                                         ),
@@ -149,13 +166,14 @@ impl Gui {
                                                     .append(
                                                         0,
                                                         WindowTool::single_tool(
-                                                            0, 0,
+                                                            0,
+                                                            0,
                                                             "Внешние устройства",
                                                             IOTool::new(),
                                                         ),
                                                     ),
                                             )
-                                                .append("Таблица трассировки", TraceTool::new()),
+                                            .append("Таблица трассировки", TraceTool::new()),
                                         )
                                         .append(
                                             350,
@@ -163,7 +181,8 @@ impl Gui {
                                                 .append(
                                                     0,
                                                     WindowTool::single_tool(
-                                                        0, 0,
+                                                        0,
+                                                        0,
                                                         "Информация о команде",
                                                         CommandHighlightTool::new(),
                                                     ),
@@ -173,21 +192,41 @@ impl Gui {
                                         .append(
                                             0,
                                             WindowTool::new("help")
-                                                .append("Прелюдия", HelpTool::new(include_str!("../help/prelude.txt")))
-                                                .append("Синтаксис", HelpTool::new(include_str!("../help/file.txt")))
-                                                .append("Шпора", HelpTool::new(include_str!("../help/cheatsheet.txt")))
-                                                .append("Нотация", HelpTool::new(include_str!("../help/notation.txt")))
-                                                .append("Да как остановить епт", HelpTool::new(include_str!("../help/run_and_stop.txt"))),
+                                                .append(
+                                                    "Прелюдия",
+                                                    HelpTool::new(include_str!(
+                                                        "../help/prelude.txt"
+                                                    )),
+                                                )
+                                                .append(
+                                                    "Синтаксис",
+                                                    HelpTool::new(include_str!("../help/file.txt")),
+                                                )
+                                                .append(
+                                                    "Шпора",
+                                                    HelpTool::new(include_str!(
+                                                        "../help/cheatsheet.txt"
+                                                    )),
+                                                )
+                                                .append(
+                                                    "Нотация",
+                                                    HelpTool::new(include_str!(
+                                                        "../help/notation.txt"
+                                                    )),
+                                                )
+                                                .append(
+                                                    "Да как остановить епт",
+                                                    HelpTool::new(include_str!(
+                                                        "../help/run_and_stop.txt"
+                                                    )),
+                                                ),
                                         ),
                                 ),
                         ),
                 )
                 .append(
                     200,
-                    WindowTool::new(
-                        "bottom",
-                    )
-                        .append("Логи", LogTool::new()),
+                    WindowTool::new("bottom").append("Логи", LogTool::new()),
                 ),
             state: GuiState::new(computer),
         };
@@ -218,7 +257,8 @@ impl Gui {
             gl_attr.set_context_version(3, 0);
         }
 
-        let mut window = video.window("BasePC 2.0", 1500, 1000)
+        let mut window = video
+            .window("BasePC 2.0", 1500, 1000)
             .position_centered()
             .resizable()
             .opengl()
@@ -226,7 +266,9 @@ impl Gui {
             .build()
             .unwrap();
 
-        let _gl_context = window.gl_create_context().expect("Couldn't create GL context");
+        let _gl_context = window
+            .gl_create_context()
+            .expect("Couldn't create GL context");
         gl::load_with(|s| video.gl_get_proc_address(s) as _);
 
         let mut imgui = imgui::Context::create();
@@ -238,7 +280,8 @@ impl Gui {
 
         let mut imgui_sdl2 = imgui_sdl2::ImguiSdl2::new(&mut imgui, &window);
 
-        let renderer = imgui_opengl_renderer::Renderer::new(&mut imgui, |s| video.gl_get_proc_address(s) as _);
+        let renderer =
+            imgui_opengl_renderer::Renderer::new(&mut imgui, |s| video.gl_get_proc_address(s) as _);
 
         let mut event_pump = sdl_context.event_pump().unwrap();
 
@@ -263,7 +306,10 @@ impl Gui {
                     }
                     Event::DropFile { filename, .. } => {
                         if self.popup.is_some() {
-                            self.popup.as_mut().unwrap().on_file_dropped(filename.as_str())
+                            self.popup
+                                .as_mut()
+                                .unwrap()
+                                .on_file_dropped(filename.as_str())
                         }
                     }
                     Event::KeyDown { scancode, .. } | Event::KeyUp { scancode, .. } => {
@@ -275,9 +321,9 @@ impl Gui {
 
             if let Some(theme) = &self.state.theme_requested {
                 match theme {
-                    Theme::Dark => { imgui.style_mut().use_dark_colors() }
-                    Theme::Light => { imgui.style_mut().use_light_colors() }
-                    Theme::Classic => { imgui.style_mut().use_classic_colors() }
+                    Theme::Dark => imgui.style_mut().use_dark_colors(),
+                    Theme::Light => imgui.style_mut().use_light_colors(),
+                    Theme::Classic => imgui.style_mut().use_classic_colors(),
                 };
                 self.state.theme_requested = None;
             };
@@ -290,14 +336,10 @@ impl Gui {
             last_frame = now;
             imgui.io_mut().delta_time = delta_s;
 
-            let io = unsafe {
-                &mut *(imgui.io_mut() as *mut Io)
-            };
+            let io = unsafe { &mut *(imgui.io_mut() as *mut Io) };
             let ui = imgui.frame();
 
-
             let token = ui.push_font(font);
-
 
             let closed = !self.draw_ui(&ui, io, &mut window);
             self.do_open_and_draw(&ui);
@@ -338,10 +380,12 @@ impl Gui {
     fn draw_ui(&mut self, ui: &Ui, io: &Io, sdl_window: &mut SDLWindow) -> bool {
         let mut opened = true;
 
-        let mut window = Window::new(im_str!("Main"))
-            .opened(&mut opened);
+        let mut window = Window::new(im_str!("Main")).opened(&mut opened);
 
-        window = window.size([sdl_window.size().0 as f32, sdl_window.size().1 as f32], Condition::Always);
+        window = window.size(
+            [sdl_window.size().0 as f32, sdl_window.size().1 as f32],
+            Condition::Always,
+        );
         window = window.no_decoration();
         window = window.movable(false);
         if self.state.editor_enabled {
@@ -359,7 +403,3 @@ impl Gui {
         return opened;
     }
 }
-
-
-
-
