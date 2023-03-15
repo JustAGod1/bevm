@@ -1,0 +1,7 @@
+$pos 10
+CLA
+BMI 015
+BR 010
+$pos 15
+ISZ 002
+BR 010

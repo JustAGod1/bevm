@@ -16,8 +16,7 @@ sdl2 = { git = "https://github.com/JustAGod1/rust-sdl2.git", features = ["bundle
 gl = "0.10.0"
 imgui-sdl2 = { git = "https://github.com/JustAGod1/rust-imgui-sdl2.git"}
 imgui-opengl-renderer = "0.11.0"
-nfd = { git = "https://github.com/saurvs/nfd-rs.git" }
-
+native-dialog = "0.6.3"
 
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "target-feature=+crt-static"]

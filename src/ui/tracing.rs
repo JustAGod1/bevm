@@ -267,9 +267,12 @@ impl Tool for TraceTool {
 }
 
 fn write_to_file(s: &str, postfix: &str, popup_manager: &mut PopupManager) -> Option<String> {
-    let filename = match nfd::open_pick_folder(None) {
+    let postfixs = [postfix];
+    let dialog = native_dialog::FileDialog::new().add_filter("", &postfixs);
+
+    let filename = match dialog.show_save_single_file() {
         Ok(r) => match r {
-            nfd::Response::Okay(f) => f,
+            Some(f) => f,
             _ => {
                 return None;
             }
@@ -283,7 +286,7 @@ fn write_to_file(s: &str, postfix: &str, popup_manager: &mut PopupManager) -> Op
         }
     };
 
-    let filename = format!("{}/tracing.{}", filename, postfix);
+    let filename = filename.into_os_string().into_string().unwrap_or("".to_owned());
 
     let f = OpenOptions::new()
         .create(true)

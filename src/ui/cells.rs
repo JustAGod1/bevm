@@ -185,9 +185,12 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
     }
 
     fn on_save_to_file(&mut self, state: &mut GuiState) {
-        let filename = match nfd::open_pick_folder(None) {
+        let filename = match native_dialog::FileDialog::new()
+            .add_filter("", &["mm"])
+            .show_save_single_file()
+        {
             Ok(r) => match r {
-                nfd::Response::Okay(f) => f,
+                Some(f) => f,
                 _ => {
                     return;
                 }
@@ -200,10 +203,12 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
                 return;
             }
         };
+        let filename = filename
+            .into_os_string()
+            .into_string()
+            .unwrap_or("".to_owned());
 
-        let filename = format!("{}/{}.mm", filename, self.page.borrow().name);
-
-        match self.save_to_file(filename.as_str()) {
+        match self.save_to_file(&filename) {
             Ok(_) => state.popup_manager.open(PopupMessage::new(
                 "Успех",
                 format!("Успешно сохранил в файл {}", filename),
@@ -249,21 +254,32 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
     }
 
     fn choose_file(state: &mut GuiState, filter: Option<&str>) -> Option<File> {
-        let file_name = match nfd::open_file_dialog(filter, None) {
+        let filter = filter.map(|f| [f]);
+        let dialog = if filter.is_none() {
+            native_dialog::FileDialog::new()
+        } else {
+            native_dialog::FileDialog::new().add_filter("", filter.as_ref().unwrap())
+        };
+
+        let filename = match dialog.show_open_single_file() {
             Ok(r) => match r {
-                nfd::Response::Okay(f) => f,
+                Some(f) => f,
                 _ => {
                     return None;
                 }
             },
             Err(e) => {
                 state.popup_manager.open(PopupMessage::new(
-                    "Ошибка выбора файла",
-                    format!("Не могу открыть окно выбора файла: {}", e.to_string()),
+                    "Ошибка выбора папки",
+                    format!("Не могу открыть окно выбора папки: {}", e.to_string()),
                 ));
                 return None;
             }
         };
+        let file_name = filename
+            .into_os_string()
+            .into_string()
+            .unwrap_or("".to_owned());
 
         return File::open(file_name).map(Some).unwrap_or_else(|e| {
             state
