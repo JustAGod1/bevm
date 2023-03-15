@@ -279,8 +279,8 @@ fn write_to_file(s: &str, postfix: &str, popup_manager: &mut PopupManager) -> Op
         },
         Err(e) => {
             popup_manager.open(PopupMessage::new(
-                "Ошибка выбора папки",
-                format!("Не могу открыть окно выбора папки: {}", e.to_string()),
+                "Ошибка выбора файла",
+                format!("Не могу открыть окно выбора файла: {}", e.to_string()),
             ));
             return None;
         }

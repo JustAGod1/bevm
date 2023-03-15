@@ -197,8 +197,8 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
             },
             Err(e) => {
                 state.popup_manager.open(PopupMessage::new(
-                    "Ошибка выбора папки",
-                    format!("Не могу открыть окно выбора папки: {}", e.to_string()),
+                    "Ошибка выбора файла",
+                    format!("Не могу открыть окно выбора файла: {}", e.to_string()),
                 ));
                 return;
             }
@@ -270,8 +270,8 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
             },
             Err(e) => {
                 state.popup_manager.open(PopupMessage::new(
-                    "Ошибка выбора папки",
-                    format!("Не могу открыть окно выбора папки: {}", e.to_string()),
+                    "Ошибка выбора файла",
+                    format!("Не могу открыть окно выбора файла: {}", e.to_string()),
                 ));
                 return None;
             }
