@@ -4,34 +4,6 @@ use core::ops::*;
 use imgui::{ImString, Ui};
 use std::collections::HashMap;
 use std::rc::Rc;
-macro_rules! io_command {
-    ($v:expr, $mask:expr, $mnemonic:expr) => {
-        let _: u16 = $mask;
-        let _: &str = $mnemonic;
-        if $v.bitand($mask).bitand($mask) == $mask {
-            return format!("{} {:0>2X}", $mnemonic, $v.bitand(0xFF));
-        }
-    };
-}
-
-macro_rules! address_command {
-    ($v:expr, $mask:expr, $mnemonic:expr) => {
-        let _: u16 = $mask;
-        let _: &str = $mnemonic;
-        if $v.bitand($mask).bitand($mask) == $mask {
-            return format!("{} {:0>3X}", $mnemonic, $v.bitand(0x7FF));
-        }
-    };
-}
-
-macro_rules! simple_command {
-    ($v:expr, $mask:expr, $mnemonic:expr) => {
-        let _: u16 = $mask;
-        if $v.bitand($mask).bitand($mask) == $mask {
-            return $mnemonic.to_string();
-        }
-    };
-}
 
 pub struct GeneralParser {
     sorted: Vec<Rc<dyn GeneralCommand>>,

@@ -29,8 +29,7 @@ impl Tool for IOTool {
             );
         }
 
-        let mut id = 0usize;
-        for cell in &mut state.computer.io_devices {
+        for (id, cell) in &mut state.computer.io_devices.iter_mut().enumerate() {
             unsafe {
                 igTableNextRow(ImGuiTableRowFlags_None as c_int, 0.0);
                 igTableNextColumn();
@@ -56,7 +55,6 @@ impl Tool for IOTool {
             ui.checkbox(im_str!("Готов"), &mut cell.ready);
 
             id_tok.pop(ui);
-            id += 1;
         }
 
         unsafe {

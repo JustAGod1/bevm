@@ -84,6 +84,8 @@ impl Tool for StatusTool {
             4
         );
 
+        let _ = cnt;
+
         if !state.computer.registers.get_allow_interupt() {
             state.computer.registers.set_interrupt(false);
         }

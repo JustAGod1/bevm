@@ -1,5 +1,5 @@
 use crate::parse::general::{GeneralCommandInfo, GeneralParser};
-use crate::parse::mc::{parse, ExecutionResult, McParser, MicroCommand, MicroCommandInfo};
+use crate::parse::mc::{parse, ExecutionResult, McParser, MicroCommandInfo};
 use crate::parse::{CommandInfo, Parser};
 use core::ops::*;
 use std::cell::RefCell;
@@ -70,12 +70,6 @@ impl Register {
         }
     }
 
-    pub fn get_wide(&self, computer: &Computer) -> u32 {
-        match self {
-            Register::Buffer => computer.registers.r_buffer,
-            _ => self.get(computer) as u32,
-        }
-    }
     pub fn get(&self, computer: &Computer) -> u16 {
         match self {
             Register::Status => computer.registers.r_status,

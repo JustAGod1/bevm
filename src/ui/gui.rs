@@ -284,10 +284,7 @@ impl Gui {
 
         let mut last_frame = Instant::now();
 
-        let mut i = 0usize;
-
         'outer: loop {
-            i += 1;
             use sdl2::event::Event;
 
             for event in event_pump.poll_iter() {
@@ -327,10 +324,9 @@ impl Gui {
             imgui_sdl2.prepare_frame(imgui.io_mut(), &window, &event_pump.mouse_state());
 
             let now = Instant::now();
-            let delta = now - last_frame;
-            let delta_s = delta.as_secs() as f32 + delta.subsec_nanos() as f32 / 1_000_000_000.0;
+            let delta = (now - last_frame).as_secs_f32();
             last_frame = now;
-            imgui.io_mut().delta_time = delta_s;
+            imgui.io_mut().delta_time = delta;
 
             let io = unsafe { &mut *(imgui.io_mut() as *mut Io) };
             let ui = imgui.frame();

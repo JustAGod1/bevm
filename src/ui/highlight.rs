@@ -12,11 +12,9 @@ impl CommandHighlightTool {
 
 impl Tool for CommandHighlightTool {
     fn draw(&mut self, ui: &Ui, _io: &Io, state: &mut GuiState) {
-        if state.current_command.is_none() {
+        let Some(command) = state.current_command.as_ref() else {
             return;
-        }
-
-        let command = state.current_command.as_ref().unwrap();
+        };
 
         command.draw_highlight(ui)
     }

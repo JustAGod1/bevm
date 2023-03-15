@@ -1,5 +1,4 @@
 use crate::model::{Computer, Memory, MemoryCell};
-
 use crate::parse::{CommandInfo, Parser};
 use crate::ui::gui::GuiState;
 use crate::ui::popup::{PopupMessage, PopupParseError};
@@ -18,15 +17,14 @@ enum CellRepresentation {
 }
 
 impl CellRepresentation {
-    fn title(&self) -> String {
+    fn title(&self) -> &'static str {
         return match self {
-            CellRepresentation::Hex => "Шестнадцетеричное".to_string(),
-            CellRepresentation::Binary => "Бинарное".to_string(),
+            CellRepresentation::Hex => "Шестнадцетеричное",
+            CellRepresentation::Binary => "Бинарное",
         };
     }
 
     fn draw_hex(&self, cell: &mut MemoryCell, ui: &Ui) {
-        let cell = cell;
         let mut data = ImString::from(format!("{:0>4X}", cell.get()));
         let width_t = ui.push_item_width(70.0);
         if ui
@@ -42,8 +40,8 @@ impl CellRepresentation {
         }
         width_t.pop(ui);
     }
+
     fn draw_binary(&self, cell: &mut MemoryCell, ui: &Ui) {
-        let cell = cell;
         let mut data = ImString::from(format!("{:0>16b}", cell.get()));
         let width_t = ui.push_item_width(160.0);
         if ui
@@ -59,6 +57,7 @@ impl CellRepresentation {
         }
         width_t.pop(ui);
     }
+
     fn draw(&self, cell: &mut MemoryCell, ui: &Ui) {
         match self {
             CellRepresentation::Hex => self.draw_hex(cell, ui),
@@ -227,17 +226,13 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
 
         let mut s = String::new();
         let mut prev_zero = true;
-        let mut prev_prev_zero = true;
 
-        let mut pos = 0usize;
-        for cell in &self.page.borrow().data {
-            prev_prev_zero = prev_zero;
-
+        for (pos, cell) in self.page.borrow().data.iter().enumerate() {
             let v = cell.get();
             if v == 0 {
                 prev_zero = true
             } else {
-                if prev_prev_zero && prev_zero {
+                if prev_zero {
                     s.push_str(format!("$pos {:X}\n", pos).as_str())
                 }
                 let str = self.page.borrow().parser.parse(v).file_string();
@@ -245,12 +240,9 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
                 s.push('\n');
                 prev_zero = false;
             }
-
-            pos += 1;
         }
 
-        f.write(s.as_bytes())
-            .map_err(|_| "Can't write file")?;
+        f.write(s.as_bytes()).map_err(|_| "Can't write file")?;
         f.flush().map_err(|_| "Can't write file")?;
 
         Ok(())
@@ -273,38 +265,27 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
             }
         };
 
-        let f = match File::open(file_name) {
-            Ok(f) => f,
-            Err(e) => {
-                state
-                    .popup_manager
-                    .open(PopupMessage::new("Ошибка открытия файла", e.to_string()));
-                return None;
-            }
-        };
-
-        Some(f)
+        return File::open(file_name).map(Some).unwrap_or_else(|e| {
+            state
+                .popup_manager
+                .open(PopupMessage::new("Ошибка открытия файла", e.to_string()));
+            None
+        });
     }
 
     fn on_load_from_file(&mut self, state: &mut GuiState) {
-        let f = Self::choose_file(state, Some("mm"));
-        if f.is_none() {
-            return;
-        }
+        let Some(mut f) = Self::choose_file(state, Some("mm")) else { return };
 
-        let mut f = f.unwrap();
-
-        let parse_result = crate::parse::file::parse_file(&mut f, &self.page.borrow().parser, 0xFF);
-
-        if parse_result.is_err() {
-            let msg = parse_result.unwrap_err();
-            state
-                .popup_manager
-                .open(PopupMessage::new("Ошибка во время парсинга", msg));
-            return;
-        }
-
-        let parse_result = parse_result.unwrap();
+        let parse_result =
+            match crate::parse::file::parse_file(&mut f, &self.page.borrow().parser, 0xFF) {
+                Ok(result) => result,
+                Err(msg) => {
+                    state
+                        .popup_manager
+                        .open(PopupMessage::new("Ошибка во время парсинга", msg));
+                    return;
+                }
+            };
 
         let mem = &mut self.page.borrow_mut().data;
         for x in mem.iter_mut() {
@@ -317,23 +298,18 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
     }
 
     fn load_bpc(&mut self, state: &mut GuiState) {
-        let f = Self::choose_file(state, Some("bpc"));
-        if f.is_none() {
+        let Some(f) = Self::choose_file(state, Some("bpc")) else {
             return;
-        }
-
-        let f = f.unwrap();
+        };
 
         let mut start_pos: Option<u16> = None;
 
         let mut parse_result = Vec::<(u16, u16)>::new();
 
-        let mut line_num = 0;
-        for line in BufReader::new(f).lines() {
-            line_num += 1;
+        for (line, line_num) in BufReader::new(f).lines().zip(1..) {
             match line {
                 Ok(line) => {
-                    let split: Vec<&str> = line.split(" ").collect();
+                    let split: Vec<&str> = line.split(' ').collect();
 
                     if split.len() < 2 {
                         state.popup_manager.open(PopupMessage::new(
@@ -343,7 +319,7 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
                         return;
                     }
 
-                    let pos = u16::from_str_radix(split.get(0).unwrap(), 16);
+                    let pos = u16::from_str_radix(split[0], 16);
                     if let Err(_e) = pos {
                         state.popup_manager.open(PopupMessage::new(
                             "Ошибочка",
@@ -356,14 +332,13 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
                     }
                     let pos = pos.unwrap();
 
-                    let mut cmd_str = split.get(1).unwrap().clone();
-                    if cmd_str.len() > 0 && cmd_str.chars().nth(0).unwrap() == '+' {
+                    let mut cmd_str = split[1].clone();
+                    if cmd_str.chars().nth(0) == Some('+') {
                         start_pos = Some(pos);
                         cmd_str = &cmd_str[1..];
                     }
 
-                    let cmd = u16::from_str_radix(cmd_str, 16);
-                    if let Err(_) = cmd {
+                    let Ok(cmd) = u16::from_str_radix(cmd_str, 16) else {
                         state.popup_manager.open(PopupMessage::new(
                             "Ошибочка",
                             format!(
@@ -372,8 +347,7 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
                             ),
                         ));
                         return;
-                    }
-                    let cmd = cmd.unwrap();
+                    };
 
                     parse_result.push((pos, cmd))
                 }
@@ -383,13 +357,19 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
             }
         }
 
-        let mem = &mut self.page.borrow_mut().data;
-        for x in mem.iter_mut() {
-            x.set(0)
-        }
+        self.page
+            .borrow_mut()
+            .data
+            .iter_mut()
+            .for_each(|x| x.set(0));
 
         for (pos, v) in parse_result {
-            mem.get_mut(pos as usize).unwrap().set(v);
+            self.page
+                .borrow_mut()
+                .data
+                .get_mut(pos as usize)
+                .unwrap()
+                .set(v);
         }
 
         if let Some(pos) = start_pos {
@@ -415,15 +395,17 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
 
     fn draw_representation_selection(&mut self, ui: &Ui) {
         if let Some(token) = ui.begin_menu(im_str!("Представление ячеек"), true) {
-            if MenuItem::new(ImString::from(CellRepresentation::Hex.title()).as_ref())
+            if MenuItem::new(ImString::from(CellRepresentation::Hex.title().to_string()).as_ref())
                 .selected(self.representation == CellRepresentation::Hex)
                 .build(ui)
             {
                 self.representation = CellRepresentation::Hex
             }
-            if MenuItem::new(ImString::from(CellRepresentation::Binary.title()).as_ref())
-                .selected(self.representation == CellRepresentation::Binary)
-                .build(ui)
+            if MenuItem::new(
+                ImString::from(CellRepresentation::Binary.title().to_string()).as_ref(),
+            )
+            .selected(self.representation == CellRepresentation::Binary)
+            .build(ui)
             {
                 self.representation = CellRepresentation::Binary
             }

@@ -422,18 +422,6 @@ fn general_tracing(computer: &mut Computer, len: usize) -> Tracing {
         computer.registers.set_program_mode(false);
         while !matches!(computer.micro_step(), ExecutionResult::HALTED) {}
 
-        let mut diff: Option<(usize, u16)> = None;
-        for i in 0..mem_before.len() {
-            if computer.general_memory.borrow().data.get(i).unwrap().get()
-                != mem_before.get(i).unwrap().get()
-            {
-                diff = Some((
-                    i,
-                    computer.general_memory.borrow().data.get(i).unwrap().get(),
-                ));
-            }
-        }
-
         let mut line = vec![
             format!("{:0>3X}", pos),
             format!("{:0>4X}", code),

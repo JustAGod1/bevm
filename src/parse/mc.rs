@@ -189,7 +189,7 @@ impl Parser<MicroCommandInfo> for McParser {
     }
 
     fn rev_parse(&self, _: &str) -> Result<u16, String> {
-        panic!()
+        unimplemented!()
     }
 }
 
@@ -1277,12 +1277,11 @@ impl OperationalCommand0 {
                 "0".to_string()
             });
 
-        let expression = match self.operation() {
+        match self.operation() {
             Operation::LeftPlusRight => format!("БР={} + {}; ", left, right),
             Operation::LeftPlusRightPlusOne => format!("БР={} + {} + 1; ", left, right),
             Operation::LeftAndRight => format!("БР={} & {}; ", left, right),
-        };
-        expression
+        }
     }
 }
 
