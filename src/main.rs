@@ -14,7 +14,6 @@ macro_rules! bit_at {
 }
 
 fn main() {
-    println!("Hello, World!");
     let computer = Computer::new();
 
     ui::gui::Gui::new(computer).run();
