@@ -112,20 +112,19 @@ impl MicroCommandDescriptor {
     }
 }
 
-macro_rules! sub_sum {
-    ($e:expr, $left:expr ,$right:expr) => {{
-        let mut sum = 0u16;
+fn sub_sum(e: u16, left: u8, right: u8) -> u16 {
+    let mut sum = 0u16;
 
-        for i in ($right..($left + 1)).rev() {
-            sum = sum.shl(1);
-            if bit_at($e, i) {
-                sum += 1;
-            }
+    for i in (right..=left).rev() {
+        sum <<= 1;
+        if e & (1 << i) != 0 {
+            sum += 1;
         }
+    }
 
-        sum
-    }};
+    sum
 }
+
 
 pub enum ExecutionResult {
     SUCCESS,
@@ -194,7 +193,7 @@ impl Parser<MicroCommandInfo> for McParser {
 }
 
 pub fn parse(opcode: u16) -> Box<dyn MicroCommand> {
-    let sum = sub_sum!(opcode, 15, 14);
+    let sum = sub_sum(opcode, 15, 14);
     match sum {
         0 => Box::new(OperationalCommand0(opcode)),
         1 => Box::new(OperationalCommand1(opcode)),
@@ -1163,7 +1162,7 @@ impl OperationalCommand1 {
     }
 
     pub fn output(&self) -> Option<Vec<Register>> {
-        let s = sub_sum!(self.0, 2, 0);
+        let s = sub_sum(self.0, 2, 0);
 
         if s == 6 {
             return None;
@@ -1231,15 +1230,15 @@ impl ControlCommand {
     }
 
     pub fn bit_location(&self) -> u16 {
-        sub_sum!(self.0, 11, 8)
+        sub_sum(self.0, 11, 8)
     }
 
     pub fn jump_address(&self) -> u8 {
-        sub_sum!(self.0, 7, 0) as u8
+        sub_sum(self.0, 7, 0) as u8
     }
 
     pub fn register(&self) -> Register {
-        match sub_sum!(self.0, 13, 12) {
+        match sub_sum(self.0, 13, 12) {
             0 => Register::Status,
             1 => Register::Data,
             2 => Register::Command,
@@ -1293,16 +1292,14 @@ impl OperationalCommand0 {
 
 #[cfg(test)]
 mod tests {
-    use crate::bit_at;
-    use core::ops::*;
-
+    use crate::parse::mc::sub_sum;
     #[test]
-    fn sub_sum() {
-        assert_eq!(sub_sum!(0xFu16, 3, 0), 0xF);
-        assert_eq!(sub_sum!(0xFu16, 2, 0), 0x7);
-        assert_eq!(sub_sum!(0xCu16, 3, 0), 0xC);
-        assert_eq!(sub_sum!(0xCu16, 2, 0), 0x4);
-        assert_eq!(sub_sum!(0xAu16, 3, 0), 0xA);
-        assert_eq!(sub_sum!(0xAu16, 2, 0), 0x2);
+    fn test_sub_sum() {
+        assert_eq!(sub_sum(0xFu16, 3, 0), 0xF);
+        assert_eq!(sub_sum(0xFu16, 2, 0), 0x7);
+        assert_eq!(sub_sum(0xCu16, 3, 0), 0xC);
+        assert_eq!(sub_sum(0xCu16, 2, 0), 0x4);
+        assert_eq!(sub_sum(0xAu16, 3, 0), 0xA);
+        assert_eq!(sub_sum(0xAu16, 2, 0), 0x2);
     }
 }
