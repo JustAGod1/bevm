@@ -118,7 +118,7 @@ macro_rules! sub_sum {
 
         for i in ($right..($left + 1)).rev() {
             sum = sum.shl(1);
-            if bit_at!($e, i) {
+            if bit_at($e, i) {
                 sum += 1;
             }
         }
@@ -202,6 +202,8 @@ pub fn parse(opcode: u16) -> Box<dyn MicroCommand> {
     }
 }
 
+use std::convert::TryInto;
+
 impl MicroCommand for ControlCommand {
     fn run(&self, computer: &mut Computer) -> ExecutionResult {
         computer.log(
@@ -213,7 +215,11 @@ impl MicroCommand for ControlCommand {
                 if self.needed_bit() { 1 } else { 0 }
             ),
         );
-        if bit_at!(self.register().get(computer), self.bit_location()) == self.needed_bit() {
+        if bit_at(
+            self.register().get(computer),
+            self.bit_location().try_into().unwrap(),
+        ) == self.needed_bit()
+        {
             computer.log(
                 true,
                 format!(
@@ -340,7 +346,7 @@ impl MicroCommand for OperationalCommand0 {
             Shift::Right => {
                 let c = computer.registers.get_overflow();
 
-                let overflow = bit_at!(computer.registers.r_counter, 0);
+                let overflow = bit_at(computer.registers.r_counter, 0);
                 computer.registers.r_buffer = (computer.registers.r_counter as u32).shr(1u32);
                 computer.log(true, format!("Присвоил регистру БР значение {:0>4X} из сдвинутого вправо регистра А({:0>4X})", computer.registers.r_buffer, computer.registers.r_counter));
                 if c {
@@ -761,7 +767,7 @@ impl MicroCommand for OperationalCommand1 {
             }
         }
         if nz == NZUpdate::N || nz == NZUpdate::NZ {
-            if bit_at!(computer.registers.r_buffer as u16, 15) {
+            if bit_at(computer.registers.r_buffer as u16, 15) {
                 computer.registers.set_negative(true);
                 computer.log(false, "Установил флаг \"знак\"".to_string());
             } else {
@@ -1020,8 +1026,8 @@ enum Operation {
 
 impl OperationalCommand0 {
     pub fn left_input(&self) -> Option<Register> {
-        let b13 = bit_at!(self.0, 13);
-        let b12 = bit_at!(self.0, 12);
+        let b13 = bit_at(self.0, 13);
+        let b12 = bit_at(self.0, 12);
         if b12 && b13 {
             Some(Register::Command)
         } else if b12 {
@@ -1034,8 +1040,8 @@ impl OperationalCommand0 {
     }
 
     pub fn right_input(&self) -> Option<Register> {
-        let b9 = bit_at!(self.0, 9);
-        let b8 = bit_at!(self.0, 8);
+        let b9 = bit_at(self.0, 9);
+        let b8 = bit_at(self.0, 8);
         if b9 && b8 {
             Some(Register::CommandCounter)
         } else if b8 {
@@ -1048,8 +1054,8 @@ impl OperationalCommand0 {
     }
 
     fn shift(&self) -> Shift {
-        let b2 = bit_at!(self.0, 2);
-        let b3 = bit_at!(self.0, 3);
+        let b2 = bit_at(self.0, 2);
+        let b3 = bit_at(self.0, 3);
 
         if b2 && b3 {
             // Ну типа два вентеля открыто, выходит ничего не произойдет
@@ -1064,8 +1070,8 @@ impl OperationalCommand0 {
     }
 
     pub fn memory(&self) -> Memory {
-        let b0 = bit_at!(self.0, 0);
-        let b1 = bit_at!(self.0, 1);
+        let b0 = bit_at(self.0, 0);
+        let b1 = bit_at(self.0, 1);
 
         if b1 && b0 {
             // Ну опять же. В методичке не уточнялось. Старые образцы ничего не делают.
@@ -1080,8 +1086,8 @@ impl OperationalCommand0 {
     }
 
     fn operation(&self) -> Operation {
-        let b4 = bit_at!(self.0, 4);
-        let b5 = bit_at!(self.0, 5);
+        let b4 = bit_at(self.0, 4);
+        let b5 = bit_at(self.0, 5);
 
         if b4 && b5 {
             // Ну опять же. В методичке не уточнялось. Старые образцы ничего не делают.
@@ -1096,8 +1102,8 @@ impl OperationalCommand0 {
     }
 
     fn complement(&self) -> Complement {
-        let b6 = bit_at!(self.0, 6);
-        let b7 = bit_at!(self.0, 7);
+        let b6 = bit_at(self.0, 6);
+        let b7 = bit_at(self.0, 7);
 
         if b6 && b7 {
             // Ну опять же. В методичке не уточнялось. Старые образцы ничего не делают.
@@ -1138,12 +1144,12 @@ pub enum IOControl {
 
 impl OperationalCommand1 {
     pub fn hlt(&self) -> bool {
-        bit_at!(self.0, 3)
+        bit_at(self.0, 3)
     }
 
     pub fn nz(&self) -> NZUpdate {
-        let b4 = bit_at!(self.0, 4);
-        let b5 = bit_at!(self.0, 5);
+        let b4 = bit_at(self.0, 4);
+        let b5 = bit_at(self.0, 5);
 
         if b4 && b5 {
             NZUpdate::NZ
@@ -1185,8 +1191,8 @@ impl OperationalCommand1 {
     }
 
     pub fn c(&self) -> CUpdate {
-        let b6 = bit_at!(self.0, 6);
-        let b7 = bit_at!(self.0, 7);
+        let b6 = bit_at(self.0, 6);
+        let b7 = bit_at(self.0, 7);
 
         if b6 && b7 {
             CUpdate::SetOne
@@ -1202,16 +1208,16 @@ impl OperationalCommand1 {
     pub fn io(&self) -> Vec<IOControl> {
         let mut result = Vec::<IOControl>::new();
 
-        if bit_at!(self.0, 8) {
+        if bit_at(self.0, 8) {
             result.push(IOControl::Connect)
         }
-        if bit_at!(self.0, 9) {
+        if bit_at(self.0, 9) {
             result.push(IOControl::Reset)
         }
-        if bit_at!(self.0, 10) {
+        if bit_at(self.0, 10) {
             result.push(IOControl::DisableInterruption)
         }
-        if bit_at!(self.0, 11) {
+        if bit_at(self.0, 11) {
             result.push(IOControl::EnableInterruption)
         }
 
@@ -1221,7 +1227,7 @@ impl OperationalCommand1 {
 
 impl ControlCommand {
     pub fn needed_bit(&self) -> bool {
-        bit_at!(self.0, 14)
+        bit_at(self.0, 14)
     }
 
     pub fn bit_location(&self) -> u16 {

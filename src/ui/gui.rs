@@ -100,13 +100,13 @@ impl Gui {
                             WindowTool::new("mem")
                                 .append(
                                     "Основная память",
-                                    CellsTool::new((&computer.general_memory).clone(), |c| {
+                                    CellsTool::new(computer.general_memory.clone(), |c| {
                                         c.registers.r_command_counter
                                     }),
                                 )
                                 .append(
                                     "Память МПУ",
-                                    CellsTool::new((&computer.mc_memory).clone(), |c| {
+                                    CellsTool::new(computer.mc_memory.clone(), |c| {
                                         c.registers.r_micro_command_counter as u16
                                     }),
                                 ),
@@ -245,8 +245,10 @@ impl Gui {
     }
 
     pub fn run(&mut self) {
-        let sdl_context = sdl2::init().unwrap();
-        let video = sdl_context.video().unwrap();
+        let sdl_context = sdl2::init().expect("Expect to get sdl_context");
+        let video = sdl_context
+            .video()
+            .expect("Expect to initialize video system");
 
         {
             let gl_attr = video.gl_attr();

@@ -4,13 +4,10 @@ use crate::model::Computer;
 mod model;
 mod parse;
 mod ui;
+use core::ops::{BitAnd, Shl};
 
-#[macro_export]
-macro_rules! bit_at {
-    ($opcode:expr, $pos:expr) => {{
-        use core::ops::*;
-        $opcode.bitand(1.shl($pos as u16) as u16) != 0
-    }};
+pub fn bit_at(opcode: u16, pos: u8) -> bool {
+    opcode.bitand(1.shl(pos as u16) as u16) != 0
 }
 
 fn main() {

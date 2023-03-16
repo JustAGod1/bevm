@@ -286,7 +286,10 @@ fn write_to_file(s: &str, postfix: &str, popup_manager: &mut PopupManager) -> Op
         }
     };
 
-    let filename = filename.into_os_string().into_string().unwrap_or("".to_owned());
+    let filename = filename
+        .into_os_string()
+        .into_string()
+        .unwrap_or("".to_owned());
 
     let f = OpenOptions::new()
         .create(true)
