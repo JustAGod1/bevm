@@ -350,7 +350,7 @@ impl Computer {
         self.registers.r_micro_command = opcode;
         let result = cmd.run(self);
         if !matches!(result, ExecutionResult::JUMPED) {
-            self.registers.r_micro_command_counter += 1;
+            self.registers.r_micro_command_counter = self.registers.r_micro_command_counter.wrapping_add(1);
         }
         result
     }
