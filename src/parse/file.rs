@@ -179,32 +179,21 @@ mod tests {
 
     #[test]
     fn parse_program_line_by_line() {
-        let a = parse_line("$pos 10");
-        assert_eq!(a, Some(DataLine::Operator("pos", "10")));
+        let test_cases = [
+            ("$pos 10", Some(DataLine::Operator("pos", "10"))),
+            ("CLA $start", Some(DataLine::Command("CLA", Some("start")))),
+            ("BMI %then", Some(DataLine::Command("BMI %then", None))),
+            ("BR %start", Some(DataLine::Command("BR %start", None))),
+            ("$pos 15", Some(DataLine::Operator("pos", "15"))),
+            (
+                "ISZ 2 $then",
+                Some(DataLine::Command("ISZ 2", Some("then"))),
+            ),
+            ("BR %start", Some(DataLine::Command("BR %start", None))),
+        ];
 
-        let a = parse_line("CLA $start");
-        assert_eq!(a, Some(DataLine::Command("CLA", Some("start"))));
-
-        assert_eq!(
-            parse_line("BMI %then"),
-            Some(DataLine::Command("BMI %then", None))
-        );
-
-        assert_eq!(
-            parse_line("BR %start"),
-            Some(DataLine::Command("BR %start", None))
-        );
-
-        assert_eq!(parse_line("$pos 15"), Some(DataLine::Operator("pos", "15")));
-
-        assert_eq!(
-            parse_line("ISZ 2 $then"),
-            Some(DataLine::Command("ISZ 2", Some("then")))
-        );
-
-        assert_eq!(
-            parse_line("BR %start"),
-            Some(DataLine::Command("BR %start", None))
-        );
+        for (input, expected) in test_cases {
+            assert_eq!(parse_line(input), expected);
+        }
     }
 }

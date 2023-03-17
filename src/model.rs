@@ -112,7 +112,7 @@ macro_rules! status_flag {
                     .bitand(1u16.shl($pos as u16).bitxor(0xFFFF) as u16);
             }
         }
-
+        #[allow(dead_code)]
         pub fn $get(&self) -> bool {
             self.r_status.bitand(1u16.shl($pos)) != 0u16
         }
