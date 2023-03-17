@@ -115,7 +115,7 @@ impl MicroCommandDescriptor {
 fn sub_sum(e: u16, left: u8, right: u8) -> u16 {
     let mut sum = 0u16;
 
-    for i in (right..=left).rev() {
+    for i in left..=right {
         sum <<= 1;
         if e & (1 << i) != 0 {
             sum += 1;
