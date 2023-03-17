@@ -1,6 +1,6 @@
-use crate::utils::bit_registers::*;
 use crate::model::{Computer, Register};
 use crate::parse::{CommandInfo, Parser};
+use crate::utils::bit_registers::*;
 use core::ops::*;
 
 use imgui::{ImString, Ui};

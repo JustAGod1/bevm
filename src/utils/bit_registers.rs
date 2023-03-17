@@ -21,7 +21,6 @@ pub fn sub_sum(e: u16, left: u8, right: u8) -> u16 {
             sum += 1;
         }
     }
-
     sum
 }
 
