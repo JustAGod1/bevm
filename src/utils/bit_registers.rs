@@ -15,7 +15,7 @@ pub fn set_bit_at(opcode: u16, pos: u16, v: bool) -> u16 {
 pub fn sub_sum(e: u16, left: u8, right: u8) -> u16 {
     let mut sum = 0u16;
 
-    for i in left..=right {
+    for i in (right..=left).rev() {
         sum <<= 1;
         if bit_at(e, i) {
             sum += 1;
