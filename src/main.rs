@@ -1,4 +1,5 @@
-#![windows_subsystem = "windows"]
+#[cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use crate::model::Computer;
 
 mod model;
