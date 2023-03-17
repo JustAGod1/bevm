@@ -4,11 +4,7 @@ use crate::model::Computer;
 mod model;
 mod parse;
 mod ui;
-use core::ops::{BitAnd, Shl};
-
-pub fn bit_at(opcode: u16, pos: u8) -> bool {
-    opcode.bitand(1.shl(pos as u16) as u16) != 0
-}
+mod utils;
 
 fn main() {
     let computer = Computer::new();

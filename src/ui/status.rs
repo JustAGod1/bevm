@@ -1,4 +1,4 @@
-use crate::bit_at;
+use crate::utils::bit_registers::*;
 use crate::ui::gui::GuiState;
 use crate::ui::window::Tool;
 use imgui::sys::{
@@ -8,14 +8,7 @@ use imgui::sys::{
 use imgui::{im_str, ImString, Io, Ui};
 use std::os::raw::c_int;
 
-fn set_bit_at(opcode: u16, pos: u16, v: bool) -> u16 {
-    use core::ops::{BitAnd, BitOr, BitXor, Shl};
-    if v {
-        opcode.bitor(1u16 << pos)
-    } else {
-        opcode.bitand(1u16.shl(pos).bitxor(0xFFFF))
-    }
-}
+
 
 pub struct StatusTool;
 impl StatusTool {

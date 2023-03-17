@@ -1,4 +1,4 @@
-use crate::bit_at;
+use crate::utils::bit_registers::*;
 use crate::model::{Computer, Register};
 use crate::parse::{CommandInfo, Parser};
 use core::ops::*;
@@ -111,20 +111,6 @@ impl MicroCommandDescriptor {
         ));
     }
 }
-
-fn sub_sum(e: u16, left: u8, right: u8) -> u16 {
-    let mut sum = 0u16;
-
-    for i in left..=right {
-        sum <<= 1;
-        if e & (1 << i) != 0 {
-            sum += 1;
-        }
-    }
-
-    sum
-}
-
 
 pub enum ExecutionResult {
     SUCCESS,
@@ -1287,19 +1273,5 @@ impl OperationalCommand0 {
             Operation::LeftPlusRightPlusOne => format!("БР={} + {} + 1; ", left, right),
             Operation::LeftAndRight => format!("БР={} & {}; ", left, right),
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::parse::mc::sub_sum;
-    #[test]
-    fn test_sub_sum() {
-        assert_eq!(sub_sum(0xFu16, 3, 0), 0xF);
-        assert_eq!(sub_sum(0xFu16, 2, 0), 0x7);
-        assert_eq!(sub_sum(0xCu16, 3, 0), 0xC);
-        assert_eq!(sub_sum(0xCu16, 2, 0), 0x4);
-        assert_eq!(sub_sum(0xAu16, 3, 0), 0xA);
-        assert_eq!(sub_sum(0xAu16, 2, 0), 0x2);
     }
 }
