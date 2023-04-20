@@ -75,9 +75,8 @@ impl LayoutTool {
     }
 
     fn draw_vertical(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
-        let mut i = 0usize;
         let len = self.tools.len();
-        for container in &mut self.tools {
+        for (i, container) in self.tools.iter_mut().enumerate() {
             let id_tok = ui.push_id(i as i32);
             container.len = relative_height(container.len, ui);
             Self::draw_tool(
@@ -97,26 +96,23 @@ impl LayoutTool {
                 }
             }
             id_tok.pop(ui);
-            i += 1
         }
     }
     fn draw_horizontal(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
-        let mut i: usize = 0;
         let len = self.tools.len();
-        for container in &mut self.tools {
+        for (i, container) in self.tools.iter_mut().enumerate() {
             let id_tok = ui.push_id(i as i32);
             Self::draw_tool(container, container.len, 0.0, ui, io, state);
             if i < len - 1 {
                 ui.same_line(0.0);
                 ui.button(im_str!("s"), [4.0, relative_height(0.0, ui)]);
                 if ui.is_item_active() {
-                    let delta = *io.mouse_delta.get(0).unwrap();
+                    let delta = *io.mouse_delta.first().unwrap();
                     container.len += delta;
                     container.len = container.len.max(20.0);
                 }
                 ui.same_line(0.0);
             }
-            i += 1;
             id_tok.pop(ui);
         }
     }
@@ -128,12 +124,12 @@ impl LayoutTool {
         self
     }
 
-    pub fn append<T>(mut self, len: i32, tool: T) -> Self
+    pub fn append<T>(mut self, len: f32, tool: T) -> Self
     where
         T: Tool,
         T: 'static,
     {
         self.tools.push(ToolContainer::new(len as f32, tool));
-        return self;
+        self
     }
 }

@@ -13,17 +13,20 @@ use std::cell::RefCell;
 use std::fs::OpenOptions;
 use std::io::Write;
 
+type Converter = (
+    &'static str,
+    fn(ui: &Ui, state: &RefCell<&mut GuiState>, tracing: &mut dyn FnMut() -> Tracing),
+);
+type Tracer = (
+    &'static str,
+    fn(computer: &mut Computer, len: usize) -> Tracing,
+);
+
 pub struct TraceTool {
     converter: usize,
     tracer: usize,
-    converters: [(
-        &'static str,
-        fn(ui: &Ui, state: &RefCell<&mut GuiState>, tracing: &mut dyn FnMut() -> Tracing),
-    ); 3],
-    tracers: [(
-        &'static str,
-        fn(computer: &mut Computer, len: usize) -> Tracing,
-    ); 2],
+    converters: [Converter; 3],
+    tracers: [Tracer; 2],
     max_len: i32,
 }
 
@@ -54,11 +57,11 @@ fn html_converter(ui: &Ui, state: &RefCell<&mut GuiState>, tracing: &mut dyn FnM
 
     let save = ui.button(im_str!("Сохранить"), [160.0, 30.0]);
     if ui.is_item_hovered() {
-        ui.tooltip_text("Просто сохраняет трассировку")
+        ui.tooltip_text("Просто сохраняет трассировку");
     }
     let open = ui.button(im_str!("Открыть"), [160.0, 30.0]);
     if ui.is_item_hovered() {
-        ui.tooltip_text("Сохраняет и пытается открыть")
+        ui.tooltip_text("Сохраняет и пытается открыть");
     }
 
     if !open && !save {
@@ -84,7 +87,7 @@ fn html_converter(ui: &Ui, state: &RefCell<&mut GuiState>, tracing: &mut dyn FnM
         for s in x {
             content.push_str(format!("\t\t<td>{}</td>", s).as_str());
         }
-        content.push_str("\t</tr>")
+        content.push_str("\t</tr>");
     }
 
     let formatted = format!(
@@ -109,8 +112,8 @@ fn html_converter(ui: &Ui, state: &RefCell<&mut GuiState>, tracing: &mut dyn FnM
     if let Err(s) = open_in_app(filename.as_str()) {
         state.borrow_mut().popup_manager.open(PopupMessage::new(
             "Упс",
-            format!("Не удалось открыть файл с трассировкой: {}", s),
-        ))
+            format!("Не удалось открыть файл с трассировкой: {s}"),
+        ));
     }
 }
 
@@ -126,14 +129,14 @@ fn csv_converter(ui: &Ui, state: &RefCell<&mut GuiState>, tracing: &mut dyn FnMu
         let trace = tracing();
 
         let mut content = String::new();
-        for x in trace.header.iter().map(|a| format!("{}", a)) {
+        for x in trace.header.iter().map(std::string::ToString::to_string) {
             content.push_str(x.as_str());
             content.push('\t');
         }
 
         for x in trace.tracing {
             content.push('\n');
-            for x in x.iter().map(|a| format!("{}", a)) {
+            for x in x.iter().map(std::string::ToString::to_string) {
                 content.push('"');
                 content.push_str(x.as_str());
                 content.push('"');
@@ -262,7 +265,7 @@ impl Tool for TraceTool {
         let cell = RefCell::new(state);
         converter(ui, &cell, &mut || {
             tracer(&mut cell.borrow_mut().computer, self.max_len as usize)
-        })
+        });
     }
 }
 
@@ -280,7 +283,7 @@ fn write_to_file(s: &str, postfix: &str, popup_manager: &mut PopupManager) -> Op
         Err(e) => {
             popup_manager.open(PopupMessage::new(
                 "Ошибка выбора файла",
-                format!("Не могу открыть окно выбора файла: {}", e.to_string()),
+                format!("Не могу открыть окно выбора файла: {}", e),
             ));
             return None;
         }
@@ -289,7 +292,7 @@ fn write_to_file(s: &str, postfix: &str, popup_manager: &mut PopupManager) -> Op
     let filename = filename
         .into_os_string()
         .into_string()
-        .unwrap_or("".to_owned());
+        .unwrap_or(String::new());
 
     let f = OpenOptions::new()
         .create(true)
@@ -300,7 +303,7 @@ fn write_to_file(s: &str, postfix: &str, popup_manager: &mut PopupManager) -> Op
     if let Err(e) = f {
         popup_manager.open(PopupMessage::new(
             "Ошибка записи",
-            format!("Не могу открыть файл \"{}\": {}", filename, e.to_string()),
+            format!("Не могу открыть файл \"{filename}\": {e}"),
         ));
         return None;
     }
@@ -309,18 +312,14 @@ fn write_to_file(s: &str, postfix: &str, popup_manager: &mut PopupManager) -> Op
     if let Err(e) = f.write(s.as_bytes()) {
         popup_manager.open(PopupMessage::new(
             "Ошибка записи",
-            format!(
-                "Не могу записать в файл \"{}\": {}",
-                filename,
-                e.to_string()
-            ),
+            format!("Не могу записать в файл \"{filename}\": {e}"),
         ));
         return None;
     }
 
     popup_manager.open(PopupMessage::new(
         "Успех",
-        format!("Успешно сохранил трассировку в файл \"{}\"", filename),
+        format!("Успешно сохранил трассировку в файл \"{filename}\""),
     ));
 
     Some(filename)
@@ -353,8 +352,8 @@ fn mc_tracing(computer: &mut Computer, len: usize) -> Tracing {
         computer.micro_step();
 
         result.push(vec![
-            format!("{:0>3X}", pos),
-            format!("{:0>4X}", code),
+            format!("{pos:0>3X}"),
+            format!("{code:0>4X}"),
             format!("{:0>3X}", computer.registers.r_command_counter),
             format!("{:0>3X}", computer.registers.r_address),
             format!("{:0>4X}", computer.registers.r_command),
@@ -426,11 +425,11 @@ fn general_tracing(computer: &mut Computer, len: usize) -> Tracing {
         computer.registers.set_execute_by_tick(false);
         computer.registers.set_lever(false);
         computer.registers.set_program_mode(false);
-        while !matches!(computer.micro_step(), ExecutionResult::HALTED) {}
+        while !matches!(computer.micro_step(), ExecutionResult::Halted) {}
 
         let mut line = vec![
-            format!("{:0>3X}", pos),
-            format!("{:0>4X}", code),
+            format!("{pos:0>3X}"),
+            format!("{code:0>4X}"),
             format!("{:0>4X}", computer.registers.r_command_counter),
             format!("{:0>4X}", computer.registers.r_address),
             format!("{:0>4X}", computer.registers.r_command),
@@ -446,7 +445,7 @@ fn general_tracing(computer: &mut Computer, len: usize) -> Tracing {
             if computer.general_memory.borrow().data.get(i).unwrap().get()
                 != mem_before.get(i).unwrap().get()
             {
-                line.push(format!("{:0>3X}", i));
+                line.push(format!("{i:0>3X}"));
                 line.push(format!(
                     "{:0>4X}",
                     computer.general_memory.borrow().data.get(i).unwrap().get()

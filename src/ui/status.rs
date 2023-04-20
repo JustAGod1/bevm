@@ -1,6 +1,6 @@
 use crate::ui::gui::GuiState;
 use crate::ui::window::Tool;
-use crate::utils::bit_registers::*;
+use crate::utils::bit_registers::{bit_at, set_bit_at};
 use imgui::sys::{
     igBeginTable, igEndTable, igTableNextColumn, igTableNextRow, ImGuiTableFlags_None,
     ImGuiTableRowFlags_None, ImVec2,
@@ -41,9 +41,9 @@ impl Tool for StatusTool {
                 set_bit_at(state.computer.registers.r_status, location as u16, updated);
 
             if ui.is_item_hovered() {
-                ui.tooltip_text(format!("(бит: {})\n{}", location, tooltip))
+                ui.tooltip_text(format!("(бит: {location})\n{tooltip}"));
             }
-            cnt += 1
+            cnt += 1;
         };
 
         status_flag("Перенос (C)", "Сообщает о переполнении аккумулятора", 0);

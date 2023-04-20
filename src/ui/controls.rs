@@ -49,7 +49,7 @@ impl SmartControlsTool {
             tok.end(ui);
         }
 
-        let w = ui.content_region_avail().get(0).unwrap() / 3.0 - 6.0;
+        let w = ui.content_region_avail().first().unwrap() / 3.0 - 6.0;
         let h = ui.content_region_avail().get(1).unwrap() / 2.0 - 3.0;
 
         if ui.button(im_str!("Микро шаг"), [w, h]) {
@@ -71,7 +71,7 @@ impl SmartControlsTool {
             state.computer.registers.set_execute_by_tick(false);
             state.computer.registers.set_lever(false);
             state.computer.registers.set_program_mode(false);
-            while !matches!(state.computer.micro_step(), ExecutionResult::HALTED) {}
+            while !matches!(state.computer.micro_step(), ExecutionResult::Halted) {}
         }
         if ui.is_item_hovered() {
             ui.tooltip_text("Устанавливает флаг \"Исполнение\" в 0\nУстанавливает флаг \"Состояние тумблера\" в 0.\nУстанавливается флаг \"Программа\" в 0.\nВыполняется полный цикл микрокоманд.\nГрубо говоря выполняется одна команда.")
@@ -122,7 +122,7 @@ impl SmartControlsTool {
         }
         if self.auto_run {
             for _ in 0..100 {
-                if matches!(state.computer.micro_step(), ExecutionResult::HALTED) {
+                if matches!(state.computer.micro_step(), ExecutionResult::Halted) {
                     if state.computer.registers.get_lever() {
                         state.popup_manager.open(PopupMessage::new(
                             "Остановочка",

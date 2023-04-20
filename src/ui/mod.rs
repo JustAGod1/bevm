@@ -35,7 +35,7 @@ pub fn relative_height(height: f32, ui: &Ui) -> f32 {
 
 #[allow(dead_code)]
 pub fn centralized_text(text: &ImStr, ui: &Ui) {
-    let _width = *(ui.calc_text_size(text, false, 0.0).get(0)).unwrap();
+    let _width = *(ui.calc_text_size(text, false, 0.0).first()).unwrap();
     ui.text(text);
 }
 
@@ -43,11 +43,11 @@ pub fn open_in_app(str: &str) -> Result<(), String> {
     let process = match std::env::consts::OS {
         "linux" => Command::new("bash")
             .arg("-c")
-            .arg(format!("xdg-open {}", str))
+            .arg(format!("xdg-open {str}"))
             .spawn(),
         "macos" => Command::new("sh")
             .arg("-c")
-            .arg(format!("open {}", str))
+            .arg(format!("open {str}"))
             .spawn(),
         "windows" => Command::new("cmd").arg("/c").arg("start").arg(str).spawn(),
         _ => {
@@ -63,19 +63,19 @@ pub fn open_in_app(str: &str) -> Result<(), String> {
         .unwrap_or(Some(1));
 
     if let Some(code) = status {
-        if code == 0 {
-            return Ok(());
-        }
-
         fn read_all(src: &mut dyn Read) -> String {
             let mut buf = Vec::new();
             let result = src.read_to_end(&mut buf);
 
             if result.is_err() {
-                return format!("Failed to read input: {}", result.unwrap_err().to_string());
+                return format!("Failed to read input: {}", result.unwrap_err());
             }
 
             String::from_utf8_lossy(buf.as_slice()).to_string()
+        }
+
+        if code == 0 {
+            return Ok(());
         }
 
         return Err(format!(

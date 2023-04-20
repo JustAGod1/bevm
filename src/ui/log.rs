@@ -24,7 +24,7 @@ impl Tool for LogTool {
                     .selected(self.show_micro)
                     .build(ui)
                 {
-                    self.show_micro = !self.show_micro
+                    self.show_micro = !self.show_micro;
                 }
                 t.end(ui);
             }
@@ -49,7 +49,7 @@ impl Tool for LogTool {
             ui.text(format!(
                 "СК: {:0>3X}, СчМК: {:0>2X}, msg: {}",
                 l.command_counter, l.micro_counter, l.info
-            ))
+            ));
         }
         if self.last_size != gui.computer.logs().len() {
             ui.set_scroll_here_y();

@@ -41,7 +41,7 @@ impl Tool for WindowTool {
                             self.tool_selector = i;
                         }
                     }
-                })
+                });
             } else {
                 ui.text(title);
             }

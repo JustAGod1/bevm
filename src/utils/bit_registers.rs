@@ -1,4 +1,4 @@
-use std::ops::*;
+use std::ops::{BitAnd, BitOr, BitXor, Shl};
 
 pub fn bit_at(opcode: u16, pos: u8) -> bool {
     opcode.bitand(1.shl(pos as u16) as u16) != 0

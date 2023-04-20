@@ -18,10 +18,10 @@ enum CellRepresentation {
 
 impl CellRepresentation {
     fn title(&self) -> &'static str {
-        return match self {
+        match self {
             CellRepresentation::Hex => "Шестнадцетеричное",
             CellRepresentation::Binary => "Бинарное",
-        };
+        }
     }
 
     fn draw_hex(&self, cell: &mut MemoryCell, ui: &Ui) {
@@ -80,8 +80,6 @@ where
     I: 'static,
 {
     fn draw(&mut self, ui: &Ui, _io: &Io, state: &mut GuiState) {
-        let mut idx = 0u32;
-
         self.draw_menu_bar(state, ui);
 
         let s_token = ui.push_style_var(StyleVar::ChildBorderSize(0.0));
@@ -95,7 +93,7 @@ where
 
         let mut focused: Option<I> = None;
 
-        for cell in data.iter_mut() {
+        for (idx, cell) in data.iter_mut().enumerate() {
             let token = ui.push_id(Id::Int(idx as i32));
             ui.text(format!("{:0>3X}", idx));
             ui.same_line(0.0);
@@ -151,11 +149,10 @@ where
             }
 
             token.pop(ui);
-            idx += 1;
         }
 
-        if focused.is_some() {
-            state.current_command = Some(Box::new(focused.unwrap()));
+        if let Some(focused) = focused {
+            state.current_command = Some(Box::new(focused));
         } else {
             state.current_command = Some(Box::new(
                 parser.parse(data.get(current_executed as usize).unwrap().get()),
@@ -198,7 +195,7 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
             Err(e) => {
                 state.popup_manager.open(PopupMessage::new(
                     "Ошибка выбора файла",
-                    format!("Не могу открыть окно выбора файла: {}", e.to_string()),
+                    format!("Не могу открыть окно выбора файла: {}", e),
                 ));
                 return;
             }
@@ -261,7 +258,7 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
             native_dialog::FileDialog::new().add_filter("", filter.as_ref().unwrap())
         };
 
-        let filename = match dialog.show_open_single_file() {
+        let file_name = match dialog.show_open_single_file() {
             Ok(r) => match r {
                 Some(f) => f,
                 _ => {
@@ -271,22 +268,22 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
             Err(e) => {
                 state.popup_manager.open(PopupMessage::new(
                     "Ошибка выбора файла",
-                    format!("Не могу открыть окно выбора файла: {}", e.to_string()),
+                    format!("Не могу открыть окно выбора файла: {}", e),
                 ));
                 return None;
             }
         };
-        let file_name = filename
+        let file_name = file_name
             .into_os_string()
             .into_string()
             .unwrap_or("".to_owned());
 
-        return File::open(file_name).map(Some).unwrap_or_else(|e| {
+        File::open(file_name).map(Some).unwrap_or_else(|e| {
             state
                 .popup_manager
                 .open(PopupMessage::new("Ошибка открытия файла", e.to_string()));
             None
-        });
+        })
     }
 
     fn on_load_from_file(&mut self, state: &mut GuiState) {
@@ -348,11 +345,12 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
                     }
                     let pos = pos.unwrap();
 
-                    let mut cmd_str = split[1].clone();
-                    if cmd_str.chars().nth(0) == Some('+') {
+                    let cmd_str = if split[1].starts_with('+') {
                         start_pos = Some(pos);
-                        cmd_str = &cmd_str[1..];
-                    }
+                        split[1]
+                    } else {
+                        &split[1][1..]
+                    };
 
                     let Ok(cmd) = u16::from_str_radix(cmd_str, 16) else {
                         state.popup_manager.open(PopupMessage::new(

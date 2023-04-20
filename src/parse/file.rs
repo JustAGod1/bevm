@@ -29,22 +29,22 @@ pub fn parse_file<T: Read, I: CommandInfo, P: Parser<I>>(
         match parsed {
             DataLine::Operator(name, arg) => {
                 if name != "pos" {
-                    return Err(err!(format!("Неизвестный оператор {}", name)));
+                    return Err(err!(format!("Неизвестный оператор {name}", )));
                 }
 
                 let Ok(pos) = u16::from_str_radix(arg, 16) else {
-                    return Err(err!(format!("Не могу распарсить число {}", arg)))
+                    return Err(err!(format!("Не могу распарсить число {arg}", )))
                 };
 
                 if pos < cursor {
-                    return Err(err!(format!("Явно указанная позиция курсора меньше текущей позиции курсора. Текущая {:X}. Укзаная {:X}.", cursor, pos)));
+                    return Err(err!(format!("Явно указанная позиция курсора меньше текущей позиции курсора. Текущая {cursor:X}. Укзаная {pos:X}.")));
                 }
 
                 if pos > max_size {
-                    return Err(err!(format!("Явно указанная позиция курсора больше максимально допустимой. Максимальная {:X}. Укзаная {:X}.", max_size, pos)));
+                    return Err(err!(format!("Явно указанная позиция курсора больше максимально допустимой. Максимальная {max_size:X}. Укзаная {pos:X}." )));
                 }
 
-                cursor = pos
+                cursor = pos;
             }
             DataLine::Command(command, name) => {
                 pre_result.push((cursor, command.to_string(), line_num as u16));
@@ -57,8 +57,7 @@ pub fn parse_file<T: Read, I: CommandInfo, P: Parser<I>>(
 
                 if cursor > max_size {
                     return Err(err!(format!(
-                        "Превышена максимальная позиция. Максимальная {:X}.",
-                        max_size
+                        "Превышена максимальная позиция. Максимальная {max_size:X}."
                     )));
                 }
             }
@@ -77,8 +76,7 @@ pub fn parse_file<T: Read, I: CommandInfo, P: Parser<I>>(
             if !is_variable_name_char(x) && var {
                 if !variables.contains_key(name.as_str()) {
                     return Err(format!(
-                        "Ошибка в строке {}. Не могу найти переменную {}.",
-                        line, name
+                        "Ошибка в строке {line}. Не могу найти переменную {name}."
                     ));
                 }
                 builder.push_str(format!("{:X}", variables.get(name.as_str()).unwrap()).as_str());
@@ -88,21 +86,18 @@ pub fn parse_file<T: Read, I: CommandInfo, P: Parser<I>>(
                 }
                 name = String::new();
             } else if x == '%' {
-                var = true
+                var = true;
+            } else if var {
+                name.push(x);
             } else {
-                if var {
-                    name.push(x)
-                } else {
-                    builder.push(x)
-                }
+                builder.push(x);
             }
         }
 
         if var {
             if !variables.contains_key(name.as_str()) {
                 return Err(format!(
-                    "Ошибка в строке {}. Не могу найти переменную {}.",
-                    line, name
+                    "Ошибка в строке {line}. Не могу найти переменную {name}."
                 ));
             }
             builder.push_str(format!("{:X}", variables.get(name.as_str()).unwrap()).as_str());
@@ -123,8 +118,7 @@ pub fn parse_file<T: Read, I: CommandInfo, P: Parser<I>>(
                 Ok(v) => result.push((pos, v)),
                 Err(_) => {
                     return Err(format!(
-                        "Ошибка в строке {}({}): Не могу распарсить число.",
-                        line, str
+                        "Ошибка в строке {line}({str}): Не могу распарсить число."
                     ))
                 }
             }
@@ -141,20 +135,20 @@ enum DataLine<'a> {
 }
 
 fn is_variable_name_char(ch: char) -> bool {
-    return ch.is_ascii_alphabetic() || ch.is_ascii_digit();
+    ch.is_ascii_alphabetic() || ch.is_ascii_digit()
 }
 
 fn parse_line(line: &str) -> Option<DataLine> {
     // remove comments
     let line = line.split_terminator('#').next().unwrap_or(line).trim();
 
-    if line.len() == 0 {
+    if line.is_empty() {
         return None;
     };
 
     // if starts with $
-    if line.starts_with('$') {
-        let mut iter = (line[1..]).split_ascii_whitespace();
+    if let Some(stripped) = line.strip_prefix('$') {
+        let mut iter = (stripped).split_ascii_whitespace();
         let first = iter.next();
         let second = iter.next();
         return Some(DataLine::Operator(first?.trim(), second?.trim()));
@@ -164,7 +158,7 @@ fn parse_line(line: &str) -> Option<DataLine> {
     let mut iter = line.split('$');
     let first = iter.next();
     let second = iter.next();
-    return Some(DataLine::Command(first?.trim(), second.map(|x| x.trim())));
+    return Some(DataLine::Command(first?.trim(), second.map(str::trim)));
 }
 
 #[cfg(test)]

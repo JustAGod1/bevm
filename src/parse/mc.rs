@@ -113,9 +113,9 @@ impl MicroCommandDescriptor {
 }
 
 pub enum ExecutionResult {
-    SUCCESS,
-    JUMPED,
-    HALTED,
+    Success,
+    Jumped,
+    Halted,
 }
 
 pub trait MicroCommand {
@@ -213,18 +213,18 @@ impl MicroCommand for ControlCommand {
                 ),
             );
             computer.registers.r_micro_command_counter = self.jump_address();
-            return ExecutionResult::JUMPED;
+            return ExecutionResult::Jumped;
         }
 
-        ExecutionResult::SUCCESS
+        ExecutionResult::Success
     }
     fn mnemonic(&self) -> String {
         format!(
-            "if {}[{}] == {} GOTO {}",
+            "if {}[{}] == {} GOTO {:0>4X}",
             self.register().mnemonic(),
             self.bit_location(),
             if self.needed_bit() { 1 } else { 0 },
-            format!("{:0>4X}", self.jump_address())
+            self.jump_address()
         )
     }
 
@@ -321,7 +321,7 @@ impl MicroCommand for ControlCommand {
 fn set_bit(num: &mut u32, pos: u8, value: bool) {
     let value = if value { 1 } else { 0 };
     let bit = value.shl(pos) as u32;
-    *num = num.bitand(bit.bitxor(0xFFFFFFFF));
+    *num = num.bitand(bit.bitxor(0xFFFF_FFFF));
     *num = num.bitor(bit);
 }
 
@@ -336,17 +336,16 @@ impl MicroCommand for OperationalCommand0 {
                 computer.log(true, format!("Присвоил регистру БР значение {:0>4X} из сдвинутого вправо регистра А({:0>4X})", computer.registers.r_buffer, computer.registers.r_counter));
                 if c {
                     computer.registers.r_buffer = computer.registers.r_buffer.bitor(0x8000);
-                    computer.log(true, format!("Установил 15 бит регистра БР в 1 так как до начала сдвига был установлен флаг C"));
+                    computer.log(true, "Установил 15 бит регистра БР в 1 так как до начала сдвига был установлен флаг C".to_string());
                 }
                 if overflow {
                     computer.log(
                         true,
-                        format!("Установил 16 бит регистра БР в 1 т.к. произошло переполнение"),
+                        "Установил 16 бит регистра БР в 1 т.к. произошло переполнение".to_string(),
                     );
-                    computer.registers.r_buffer =
-                        (computer.registers.r_buffer as u32).bitor(0x10000);
+                    computer.registers.r_buffer = computer.registers.r_buffer.bitor(0x10000);
                 }
-                return ExecutionResult::SUCCESS;
+                return ExecutionResult::Success;
             }
             Shift::Left => {
                 let c = computer.registers.get_overflow();
@@ -356,9 +355,9 @@ impl MicroCommand for OperationalCommand0 {
                 computer.log(true, format!("Присвоил регистру БР значение {:0>4X} из сдвинутого влево регистра А({:0>4X})", computer.registers.r_buffer, computer.registers.r_counter));
                 if c {
                     computer.registers.r_buffer = computer.registers.r_buffer.bitor(0x1);
-                    computer.log(true, format!("Установил 0 бит регистра БР в 1 так как до начала сдвига был установлен флаг C"));
+                    computer.log(true, "Установил 0 бит регистра БР в 1 так как до начала сдвига был установлен флаг C".to_string());
                 }
-                return ExecutionResult::SUCCESS;
+                return ExecutionResult::Success;
             }
             _ => {}
         }
@@ -486,7 +485,7 @@ impl MicroCommand for OperationalCommand0 {
             }
         };
 
-        ExecutionResult::SUCCESS
+        ExecutionResult::Success
     }
 
     fn mnemonic(&self) -> String {
@@ -504,7 +503,7 @@ impl MicroCommand for OperationalCommand0 {
             Memory::None => "",
         };
 
-        return format!("{}{}", expression, memory);
+        format!("{}{}", expression, memory)
     }
 
     fn draw_highlight(&self, ui: &Ui) {
@@ -681,11 +680,11 @@ impl MicroCommand for OperationalCommand1 {
     fn run(&self, computer: &mut Computer) -> ExecutionResult {
         if self.hlt() {
             computer.log(false, "Оппа, моя остановочка.".to_string());
-            return ExecutionResult::HALTED;
+            return ExecutionResult::Halted;
         }
 
         let io = self.io();
-        if io.len() > 0 {
+        if !io.is_empty() {
             for cmd in io {
                 match cmd {
                     IOControl::Connect => {
@@ -715,7 +714,7 @@ impl MicroCommand for OperationalCommand1 {
                 }
             }
 
-            return ExecutionResult::SUCCESS;
+            return ExecutionResult::Success;
         }
 
         match self.c() {
@@ -761,8 +760,8 @@ impl MicroCommand for OperationalCommand1 {
             }
         }
 
-        self.output().map(|v| {
-            for register in v {
+        if let Some(output) = self.output() {
+            for register in output {
                 computer.log(
                     register != Register::Counter && register != Register::CommandCounter,
                     format!(
@@ -773,9 +772,9 @@ impl MicroCommand for OperationalCommand1 {
                 );
                 register.assign(computer, computer.registers.r_buffer.bitand(0xFFFF) as u16);
             }
-        });
+        }
 
-        ExecutionResult::SUCCESS
+        ExecutionResult::Success
     }
 
     fn opcode(&self) -> u16 {
@@ -815,22 +814,19 @@ impl MicroCommand for OperationalCommand1 {
             NZUpdate::None => "",
         };
 
-        let updated = self
-            .output()
-            .map(|vec| {
-                vec.iter()
-                    .map(|r| r.mnemonic())
-                    .fold("".to_string(), |a, b| format!("{} {}", a, b))
-            })
-            .unwrap_or("".to_string());
+        let updated = self.output().map_or("".to_string(), |vec| {
+            vec.iter()
+                .map(|r| r.mnemonic())
+                .fold("".to_string(), |a, b| format!("{} {}", a, b))
+        });
 
-        let updated = if updated.len() > 0 {
+        let updated = if !updated.is_empty() {
             format!("{} = БР; ", updated.trim())
         } else {
             updated.trim().to_string()
         };
 
-        return format!("{}{}{}{}", io, c, nz, updated);
+        format!("{}{}{}{}", io, c, nz, updated)
     }
 
     fn draw_highlight(&self, ui: &Ui) {
@@ -1172,7 +1168,7 @@ impl OperationalCommand1 {
             }
         };
 
-        return Some(r);
+        Some(r)
     }
 
     pub fn c(&self) -> CUpdate {

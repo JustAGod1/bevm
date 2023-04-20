@@ -37,7 +37,7 @@ impl Popup for PopupMessage {
 
         popup.build(|| ui.text(self.msg.as_str()));
 
-        return open;
+        open
     }
 }
 
@@ -71,6 +71,6 @@ impl Popup for PopupParseError {
             ui.text(format!("Ошибка: {}", self.msg));
         });
 
-        return open;
+        open
     }
 }

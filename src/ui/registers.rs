@@ -22,10 +22,7 @@ impl Tool for RegistersTool {
             let mut content = ImString::from(register.format(computer));
             let t = ui.push_item_width(80.0);
             if ui
-                .input_text(
-                    ImString::from(register.mnemonic().to_string()).as_ref(),
-                    &mut content,
-                )
+                .input_text(ImString::from(register.mnemonic()).as_ref(), &mut content)
                 .chars_hexadecimal(true)
                 .allow_tab_input(false)
                 .build()
@@ -36,7 +33,7 @@ impl Tool for RegistersTool {
             }
             t.pop(ui);
             if ui.is_item_hovered() {
-                ui.tooltip_text(tooltip)
+                ui.tooltip_text(tooltip);
             }
         }
 
@@ -66,7 +63,7 @@ impl Tool for RegistersTool {
                 Register::CommandCounter,
                 "Счетчик команд. Указывает на текущую выполняемую команду.",
             );
-            igEndTable()
+            igEndTable();
         }
 
         ui.text(im_str!("Регистры микрокоманд"));

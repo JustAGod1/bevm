@@ -89,14 +89,14 @@ pub enum Theme {
 
 impl Gui {
     pub fn new(computer: Computer) -> Gui {
-        return Gui {
+        Gui {
             popup: None,
             content: LayoutTool::new_vertical("root")
                 .append(
-                    -210,
+                    -210.,
                     LayoutTool::new_horizontal("main")
                         .append(
-                            250,
+                            250.,
                             WindowTool::new("mem")
                                 .append(
                                     "Основная память",
@@ -112,17 +112,17 @@ impl Gui {
                                 ),
                         )
                         .append(
-                            0,
+                            0.,
                             LayoutTool::new_vertical("right")
                                 .append(
-                                    250,
+                                    250.,
                                     WindowTool::single_tool(
                                         0,
                                         250,
                                         "Состояние ЭВМ",
                                         LayoutTool::new_horizontal("regandstat")
                                             .append(
-                                                300,
+                                                300.,
                                                 WindowTool::single_tool(
                                                     300,
                                                     0,
@@ -131,7 +131,7 @@ impl Gui {
                                                 ),
                                             )
                                             .append(
-                                                0,
+                                                0.,
                                                 WindowTool::single_tool(
                                                     0,
                                                     0,
@@ -142,17 +142,17 @@ impl Gui {
                                     ),
                                 )
                                 .append(
-                                    0,
+                                    0.,
                                     LayoutTool::new_horizontal("middle")
                                         .append(
-                                            335,
+                                            335.,
                                             WindowTool::single_tool(
                                                 315,
                                                 0,
                                                 "Панель управления",
                                                 LayoutTool::new_vertical("execandio")
                                                     .append(
-                                                        135,
+                                                        135.,
                                                         WindowTool::single_tool(
                                                             0,
                                                             135,
@@ -161,7 +161,7 @@ impl Gui {
                                                         ),
                                                     )
                                                     .append(
-                                                        0,
+                                                        0.,
                                                         WindowTool::single_tool(
                                                             0,
                                                             0,
@@ -173,10 +173,10 @@ impl Gui {
                                             .append("Таблица трассировки", TraceTool::new()),
                                         )
                                         .append(
-                                            350,
+                                            350.,
                                             LayoutTool::new_vertical("infoandload")
                                                 .append(
-                                                    0,
+                                                    0.,
                                                     WindowTool::single_tool(
                                                         0,
                                                         0,
@@ -187,7 +187,7 @@ impl Gui {
                                                 .size(315, 0),
                                         )
                                         .append(
-                                            0,
+                                            0.,
                                             WindowTool::new("help")
                                                 .append(
                                                     "Прелюдия",
@@ -222,11 +222,11 @@ impl Gui {
                         ),
                 )
                 .append(
-                    200,
+                    200.,
                     WindowTool::new("bottom").append("Логи", LogTool::new()),
                 ),
             state: GuiState::new(computer),
-        };
+        }
     }
 
     fn do_open_and_draw(&mut self, ui: &Ui) {
@@ -389,11 +389,11 @@ impl Gui {
 
         window = window.position([0.0, 0.0], Condition::Appearing);
 
-        if let Some(token) = window.begin(&ui) {
+        if let Some(token) = window.begin(ui) {
             self.content.draw(ui, io, &mut self.state);
             token.end(ui);
         }
 
-        return opened;
+        opened
     }
 }

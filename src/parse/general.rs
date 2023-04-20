@@ -1,6 +1,6 @@
 use crate::parse::{CommandInfo, Parser};
 
-use core::ops::*;
+use core::ops::{BitAnd, BitOr, BitXor};
 use imgui::{ImString, Ui};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -157,12 +157,10 @@ impl GeneralParser {
         parser.sorted.sort_by(|a, b| {
             let l = format!("{:b}", a.mask())
                 .chars()
-                .into_iter()
                 .filter(|c| *c == '1')
                 .count();
             let r = format!("{:b}", b.mask())
                 .chars()
-                .into_iter()
                 .filter(|c| *c == '1')
                 .count();
             r.cmp(&l)
@@ -174,7 +172,7 @@ impl GeneralParser {
 
 impl Parser<GeneralCommandInfo> for GeneralParser {
     fn parse(&self, v: u16) -> GeneralCommandInfo {
-        for command in self.sorted.iter() {
+        for command in &self.sorted {
             if command.matching(v) {
                 return GeneralCommandInfo::new(command.clone(), v);
             }
@@ -187,15 +185,15 @@ impl Parser<GeneralCommandInfo> for GeneralParser {
     }
 
     fn rev_parse(&self, str: &str) -> Result<u16, String> {
-        let mnemonic = str.split(" ").next();
+        let mnemonic = str.split(' ').next();
         if mnemonic.is_none() {
-            return Err(format!("Пустая строка получается"));
+            return Err("Пустая строка получается".to_string());
         }
 
         let mnemonic = mnemonic.unwrap().to_uppercase();
         let command = self.mnemonic_map.get(mnemonic.as_str());
         if command.is_none() {
-            return Err(format!("Неизвестная мнемоника {}", mnemonic));
+            return Err(format!("Неизвестная мнемоника {mnemonic}"));
         }
 
         command.unwrap().rev_parse(str)
@@ -240,10 +238,10 @@ impl GeneralCommand for SimpleCommand {
     fn file_string(&self, cmd: u16) -> String {
         let excessive = cmd.bitand(self.mask.bitxor(0xFFFF));
 
-        if excessive != 0 {
-            format!("{:0>4X}", cmd)
-        } else {
+        if excessive == 0 {
             self.mnemonic().to_owned()
+        } else {
+            format!("{cmd:0>4X}")
         }
     }
 
@@ -282,7 +280,7 @@ impl GeneralCommand for SimpleCommand {
 
         let excessive = opcode.bitand(self.mask.bitxor(0xFFFF));
         if excessive != 0 {
-            ui.text_wrapped(ImString::from(format!("Примечание: опкод {:0>4X} был посчитан командой {} так как бинарное и между опкодом {:0>4X} и маской команды {:0>4X} выдало значение равное той же маске {:0>4X}. Таким образом мы просто полностью игнорируем тот факт, что опкод не равен маске.", opcode, self.name, opcode, self.mask, self.mask)).as_ref())
+            ui.text_wrapped(ImString::from(format!("Примечание: опкод {:0>4X} был посчитан командой {} так как бинарное и между опкодом {:0>4X} и маской команды {:0>4X} выдало значение равное той же маске {:0>4X}. Таким образом мы просто полностью игнорируем тот факт, что опкод не равен маске.", opcode, self.name, opcode, self.mask, self.mask)).as_ref());
         }
     }
 }
@@ -343,7 +341,7 @@ impl GeneralCommand for AddressCommand {
     }
 
     fn rev_parse(&self, s: &str) -> Result<u16, String> {
-        let splited = s.trim().split(" ").collect::<Vec<&str>>();
+        let splited = s.trim().split(' ').collect::<Vec<&str>>();
 
         if splited.len() > 2 {
             return Err(format!(
@@ -362,12 +360,11 @@ impl GeneralCommand for AddressCommand {
         let address = splited.get(1).unwrap().trim();
 
         let indirect = if !address.is_empty() {
-            if address.chars().nth(0usize).unwrap() == '(' {
+            if address.starts_with('(') {
                 if address.chars().nth(address.len() - 1).unwrap() != ')' {
                     return Err("Не закрытая скобка".to_string());
-                } else {
-                    true
                 }
+                true
             } else {
                 false
             }
@@ -389,12 +386,10 @@ impl GeneralCommand for AddressCommand {
                 } else {
                     Err("Максимально адресуема память 0x7FF".to_string())
                 }
+            } else if indirect {
+                Ok(self.mask.bitor(parsed).bitor(0x0800))
             } else {
-                if indirect {
-                    Ok(self.mask.bitor(parsed).bitor(0x0800))
-                } else {
-                    Ok(self.mask.bitor(parsed))
-                }
+                Ok(self.mask.bitor(parsed))
             }
         } else {
             Err(format!(
