@@ -200,11 +200,11 @@ impl MicroCommand for ControlCommand {
         ExecutionResult::SUCCESS
     }
     fn mnemonic(&self) -> String {
-        format!("if {}[{}] == {} GOTO {}",
+        format!("if {}[{}] == {} GOTO {:0>4X}",
                 self.register().mnemonic(),
                 self.bit_location(),
                 if self.needed_bit() { 1 } else { 0 },
-                format!("{:0>4X}", self.jump_address())
+                self.jump_address()
         )
     }
 
@@ -536,7 +536,7 @@ impl MicroCommand for OperationalCommand1 {
         }
 
         let io = self.io();
-        if io.len() > 0 {
+        if !io.is_empty() {
             for cmd in io {
                 match cmd {
                     IOControl::Connect => {
@@ -609,7 +609,7 @@ impl MicroCommand for OperationalCommand1 {
             }
         }
 
-        self.output().map(|v| {
+        if let Some(v) = self.output() {
             for register in v {
                 computer.log(
                     register != Register::Counter && register != Register::CommandCounter,
@@ -617,13 +617,9 @@ impl MicroCommand for OperationalCommand1 {
                 );
                 register.assign(computer, computer.registers.r_buffer.bitand(0xFFFF) as u16);
             }
-        });
+        }
 
         ExecutionResult::SUCCESS
-    }
-
-    fn opcode(&self) -> u16 {
-        self.0
     }
 
     fn mnemonic(&self) -> String {
@@ -706,6 +702,10 @@ impl MicroCommand for OperationalCommand1 {
         111 - в РА, РД, РК и А");
 
         descriptor.make_description(ui, self);
+    }
+
+    fn opcode(&self) -> u16 {
+        self.0
     }
 
 

@@ -7,6 +7,8 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::io::{BufReader, BufRead};
 use std::marker::PhantomData;
+use std::task::ready;
+use sdl2::sys::register_t;
 
 #[derive(Eq, PartialEq)]
 pub enum Register {
@@ -129,7 +131,7 @@ macro_rules! status_flag {
 
 impl Registers {
     pub fn new() -> Registers {
-        return Registers {
+        Registers {
             r_micro_command_counter: 0,
             r_status: 0,
             r_command_counter: 0,
@@ -244,7 +246,7 @@ impl Computer {
         }
         else if opcode.bitand(0x0200) == 0x0200 {
             self.registers.r_counter = self.registers.r_counter.bitand(0xFF00);
-            let data = self.io_devices.get_mut(num as usize).unwrap().data as u16;
+            let data = self.io_devices.get_mut(num).unwrap().data as u16;
             self.registers.r_counter = self.registers.r_counter.bitor(data);
             self.log(false, format!("Перенес значение {:0>2X} из  ВУ номер {} в младшие разряды аккамулятора", data, num));
         }
@@ -260,6 +262,14 @@ impl Computer {
         else {
             self.log(false, format!("Сбросил флаг готовности ВУ номер {}", num));
             self.io_devices[num].ready = false;
+        }
+
+        let counter_now_null = self.registers.r_counter == 0;
+
+        println!("{} {}", self.registers.r_counter, counter_now_null);
+        if self.registers.get_null() != counter_now_null {
+            self.registers.set_null(counter_now_null);
+            self.log(true, format!("Установил флаг нуля в {}", if counter_now_null { "1" } else { "0" }));
         }
 
         self.log(true, "Сбросил флаг ВВОД-ВВЫОД".to_string());
