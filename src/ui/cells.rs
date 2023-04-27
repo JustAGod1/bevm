@@ -149,8 +149,8 @@ where
             token.pop();
         }
 
-        if focused.is_some() {
-            state.current_command = Some(Box::new(focused.unwrap()));
+        if let Some(focused) = focused {
+            state.current_command = Some(Box::new(focused));
         } else {
             state.current_command = Some(Box::new(
                 parser.parse(data.get(current_executed as usize).unwrap().get()),

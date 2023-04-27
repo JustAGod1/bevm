@@ -1,5 +1,5 @@
 use crate::ui::gui::GuiState;
-use imgui::{Ui};
+use imgui::Ui;
 
 pub trait Popup {
     fn name(&self) -> String;

@@ -3,7 +3,7 @@ use crate::parse::{CommandInfo, Parser};
 use crate::utils::bit_registers::*;
 use core::ops::*;
 
-use imgui::{Ui};
+use imgui::Ui;
 
 struct RangeDescriptor {
     range: Range<u16>,
@@ -219,11 +219,12 @@ impl MicroCommand for ControlCommand {
         ExecutionResult::Success
     }
     fn mnemonic(&self) -> String {
-        format!("if {}[{}] == {} GOTO {:0>4X}",
-                self.register().mnemonic(),
-                self.bit_location(),
-                if self.needed_bit() { 1 } else { 0 },
-                self.jump_address()
+        format!(
+            "if {}[{}] == {} GOTO {:0>4X}",
+            self.register().mnemonic(),
+            self.bit_location(),
+            if self.needed_bit() { 1 } else { 0 },
+            self.jump_address()
         )
     }
 
@@ -910,7 +911,6 @@ impl MicroCommand for OperationalCommand1 {
         self.0
     }
 
-
     fn horizontal(&self) -> u32 {
         let mut result = 0;
 
@@ -998,6 +998,7 @@ pub enum Memory {
     None,
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Eq, PartialEq)]
 enum Operation {
     LeftPlusRight,

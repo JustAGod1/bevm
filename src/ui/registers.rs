@@ -68,7 +68,13 @@ impl Tool for RegistersTool {
 
         ui.text("Регистры микрокоманд");
         unsafe {
-            igBeginTable(im_str!("mc_reg").as_ptr(), 2, ImGuiTableFlags_None as c_int, ImVec2::new(250.0, 0.0), 0.0);
+            igBeginTable(
+                im_str!("mc_reg").as_ptr(),
+                2,
+                ImGuiTableFlags_None as c_int,
+                ImVec2::new(250.0, 0.0),
+                0.0,
+            );
             igTableNextRow(ImGuiTableRowFlags_None as c_int, 0.0);
             igTableNextColumn();
             reg_field(

@@ -129,7 +129,7 @@ impl LayoutTool {
         T: Tool,
         T: 'static,
     {
-        self.tools.push(ToolContainer::new(len as f32, tool));
+        self.tools.push(ToolContainer::new(len, tool));
         self
     }
 }

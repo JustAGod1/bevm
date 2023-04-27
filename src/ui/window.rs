@@ -16,7 +16,8 @@ pub struct WindowTool {
 
 impl Tool for WindowTool {
     fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
-        let token = ui.child_window(&self.id)
+        let token = ui
+            .child_window(&self.id)
             .size([0.0, 0.0])
             .movable(false)
             .border(true)
@@ -29,13 +30,13 @@ impl Tool for WindowTool {
         let token = token.unwrap();
 
         ui.menu_bar(|| {
-
             let title = self.tools.get(self.tool_selector).unwrap().0;
             if self.tools.len() > 1 {
                 ui.menu(title, || {
                     for i in 0..self.tools.len() {
                         let name = ImString::new(self.tools.get(i).unwrap().0);
-                        if ui.menu_item_config(name)
+                        if ui
+                            .menu_item_config(name)
                             .selected(i == self.tool_selector)
                             .build()
                         {

@@ -29,11 +29,11 @@ pub fn parse_file<T: Read, I: CommandInfo, P: Parser<I>>(
         match parsed {
             DataLine::Operator(name, arg) => {
                 if name != "pos" {
-                    return Err(err!(format!("Неизвестный оператор {name}", )));
+                    return Err(err!(format!("Неизвестный оператор {name}")));
                 }
 
                 let Ok(pos) = u16::from_str_radix(arg, 16) else {
-                    return Err(err!(format!("Не могу распарсить число {arg}", )))
+                    return Err(err!(format!("Не могу распарсить число {arg}")))
                 };
 
                 if pos < cursor {

@@ -335,8 +335,8 @@ impl Gui {
 
             let token = ui.push_font(font);
 
-            let closed = !self.draw_ui(&ui, io, &mut window);
-            self.do_open_and_draw(&ui);
+            let closed = !self.draw_ui(ui, io, &mut window);
+            self.do_open_and_draw(ui);
 
             token.pop();
 
@@ -345,7 +345,7 @@ impl Gui {
                 gl::Clear(gl::COLOR_BUFFER_BIT);
             }
 
-            imgui_sdl2.prepare_render(&ui, &window);
+            imgui_sdl2.prepare_render(ui, &window);
             renderer.render(&mut imgui);
 
             window.gl_swap_window();
@@ -374,8 +374,7 @@ impl Gui {
     fn draw_ui(&mut self, ui: &Ui, io: &Io, sdl_window: &mut SDLWindow) -> bool {
         let mut opened = true;
 
-        let mut window = ui.window("Main")
-            .opened(&mut opened);
+        let mut window = ui.window("Main").opened(&mut opened);
 
         window = window.size(
             [sdl_window.size().0 as f32, sdl_window.size().1 as f32],
@@ -385,7 +384,8 @@ impl Gui {
         window = window.movable(false);
         if self.state.editor_enabled {
             let mut style = ui.clone_style();
-            ui.window("Editor").build(|| ui.show_style_editor(&mut style));
+            ui.window("Editor")
+                .build(|| ui.show_style_editor(&mut style));
         }
 
         window = window.position([0.0, 0.0], Condition::Appearing);

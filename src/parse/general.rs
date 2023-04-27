@@ -1,7 +1,7 @@
 use crate::parse::{CommandInfo, Parser};
 
 use core::ops::{BitAnd, BitOr, BitXor};
-use imgui::{Ui};
+use imgui::Ui;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -417,8 +417,6 @@ impl GeneralCommand for AddressCommand {
         }
 
         ui.text_wrapped(format!("Описание: {}", self.description))
-
-
     }
 }
 
