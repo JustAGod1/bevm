@@ -1,6 +1,6 @@
 use crate::ui::gui::GuiState;
 
-use imgui::{ChildWindow, ImString, Io, MenuItem, Ui};
+use imgui::{ImString, Io, Ui};
 
 pub trait Tool {
     fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState);
@@ -16,27 +16,28 @@ pub struct WindowTool {
 
 impl Tool for WindowTool {
     fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
-        let token = ChildWindow::new(&self.id)
+        let token = ui.child_window(&self.id)
             .size([0.0, 0.0])
             .movable(false)
             .border(true)
             .menu_bar(true)
             .always_vertical_scrollbar(self.vertical_scroll)
-            .begin(ui);
+            .begin();
         if token.is_none() {
             return;
         }
         let token = token.unwrap();
 
         ui.menu_bar(|| {
-            let title = ImString::new(self.tools.get(self.tool_selector).unwrap().0);
+
+            let title = self.tools.get(self.tool_selector).unwrap().0;
             if self.tools.len() > 1 {
-                ui.menu(title.as_ref(), true, || {
+                ui.menu(title, || {
                     for i in 0..self.tools.len() {
                         let name = ImString::new(self.tools.get(i).unwrap().0);
-                        if MenuItem::new(name.as_ref())
+                        if ui.menu_item_config(name)
                             .selected(i == self.tool_selector)
-                            .build(ui)
+                            .build()
                         {
                             self.tool_selector = i;
                         }
@@ -51,7 +52,7 @@ impl Tool for WindowTool {
 
         tool.draw(ui, io, state);
 
-        token.end(ui);
+        token.end();
     }
 }
 

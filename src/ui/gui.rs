@@ -6,7 +6,7 @@ extern crate sdl2;
 
 use std::time::Instant;
 
-use imgui::{im_str, Condition, Ui, Window};
+use imgui::{Condition, Ui};
 use sdl2::video::Window as SDLWindow;
 
 use crate::model::Computer;
@@ -238,7 +238,7 @@ impl Gui {
         }
         if !self.state.popup_manager.popup_delayed.is_empty() {
             let popup = self.state.popup_manager.popup_delayed.pop().unwrap();
-            ui.open_popup(popup.name().as_ref());
+            ui.open_popup(popup.name());
 
             self.popup = Some(popup);
         }
@@ -338,7 +338,7 @@ impl Gui {
             let closed = !self.draw_ui(&ui, io, &mut window);
             self.do_open_and_draw(&ui);
 
-            token.pop(&ui);
+            token.pop();
 
             unsafe {
                 gl::ClearColor(0.2, 0.2, 0.2, 1.0);
@@ -346,7 +346,7 @@ impl Gui {
             }
 
             imgui_sdl2.prepare_render(&ui, &window);
-            renderer.render(ui);
+            renderer.render(&mut imgui);
 
             window.gl_swap_window();
 
@@ -374,7 +374,8 @@ impl Gui {
     fn draw_ui(&mut self, ui: &Ui, io: &Io, sdl_window: &mut SDLWindow) -> bool {
         let mut opened = true;
 
-        let mut window = Window::new(im_str!("Main")).opened(&mut opened);
+        let mut window = ui.window("Main")
+            .opened(&mut opened);
 
         window = window.size(
             [sdl_window.size().0 as f32, sdl_window.size().1 as f32],
@@ -384,14 +385,14 @@ impl Gui {
         window = window.movable(false);
         if self.state.editor_enabled {
             let mut style = ui.clone_style();
-            Window::new(im_str!("Editor")).build(ui, || ui.show_style_editor(&mut style));
+            ui.window("Editor").build(|| ui.show_style_editor(&mut style));
         }
 
         window = window.position([0.0, 0.0], Condition::Appearing);
 
-        if let Some(token) = window.begin(ui) {
+        if let Some(token) = window.begin() {
             self.content.draw(ui, io, &mut self.state);
-            token.end(ui);
+            token.end();
         }
 
         opened

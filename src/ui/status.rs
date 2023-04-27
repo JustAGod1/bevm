@@ -5,7 +5,7 @@ use imgui::sys::{
     igBeginTable, igEndTable, igTableNextColumn, igTableNextRow, ImGuiTableFlags_None,
     ImGuiTableRowFlags_None, ImVec2,
 };
-use imgui::{im_str, ImString, Io, Ui};
+use imgui::{im_str, Io, Ui};
 use std::os::raw::c_int;
 
 pub struct StatusTool;
@@ -36,7 +36,7 @@ impl Tool for StatusTool {
                 igTableNextColumn();
             }
             let mut updated = bit_at(state.computer.registers.r_status, location);
-            ui.checkbox(ImString::new(name).as_ref(), &mut updated);
+            ui.checkbox(name, &mut updated);
             state.computer.registers.r_status =
                 set_bit_at(state.computer.registers.r_status, location as u16, updated);
 

@@ -3,7 +3,7 @@ use crate::parse::{CommandInfo, Parser};
 use crate::utils::bit_registers::*;
 use core::ops::*;
 
-use imgui::{ImString, Ui};
+use imgui::{Ui};
 
 struct RangeDescriptor {
     range: Range<u16>,
@@ -68,7 +68,7 @@ impl MicroCommandDescriptor {
     fn make_description(&self, ui: &Ui, cmd: &dyn MicroCommand) {
         let opcode = cmd.opcode();
 
-        ui.text_wrapped(ImString::new(self.global_descriptions).as_ref());
+        ui.text_wrapped(self.global_descriptions);
 
         ui.separator();
         ui.text("Вертикальное представление:");
@@ -219,12 +219,11 @@ impl MicroCommand for ControlCommand {
         ExecutionResult::Success
     }
     fn mnemonic(&self) -> String {
-        format!(
-            "if {}[{}] == {} GOTO {:0>4X}",
-            self.register().mnemonic(),
-            self.bit_location(),
-            if self.needed_bit() { 1 } else { 0 },
-            self.jump_address()
+        format!("if {}[{}] == {} GOTO {:0>4X}",
+                self.register().mnemonic(),
+                self.bit_location(),
+                if self.needed_bit() { 1 } else { 0 },
+                self.jump_address()
         )
     }
 
@@ -760,8 +759,8 @@ impl MicroCommand for OperationalCommand1 {
             }
         }
 
-        if let Some(output) = self.output() {
-            for register in output {
+        if let Some(v) = self.output() {
+            for register in v {
                 computer.log(
                     register != Register::Counter && register != Register::CommandCounter,
                     format!(
@@ -775,10 +774,6 @@ impl MicroCommand for OperationalCommand1 {
         }
 
         ExecutionResult::Success
-    }
-
-    fn opcode(&self) -> u16 {
-        self.0
     }
 
     fn mnemonic(&self) -> String {
@@ -910,6 +905,11 @@ impl MicroCommand for OperationalCommand1 {
 
         descriptor.make_description(ui, self);
     }
+
+    fn opcode(&self) -> u16 {
+        self.0
+    }
+
 
     fn horizontal(&self) -> u32 {
         let mut result = 0;

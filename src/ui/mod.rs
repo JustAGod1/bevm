@@ -35,7 +35,8 @@ pub fn relative_height(height: f32, ui: &Ui) -> f32 {
 
 #[allow(dead_code)]
 pub fn centralized_text(text: &ImStr, ui: &Ui) {
-    let _width = *(ui.calc_text_size(text, false, 0.0).first()).unwrap();
+    let _width = *(ui.calc_text_size(text).get(0)).unwrap();
+    //ui.set_cursor_pos([0.0, 0.0]);
     ui.text(text);
 }
 
