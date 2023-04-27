@@ -21,23 +21,23 @@ impl HelpTool {
 impl Tool for HelpTool {
     fn draw(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
         ui.menu_bar(|| {
-           ui.menu(im_str!("Полезные ссылочки"), true, || {
-               if MenuItem::new(im_str!("GitHub")).build(ui) {
+           ui.menu("Полезные ссылочки", || {
+               if ui.menu_item("GitHub") {
                    if let Err(e) = open_in_app("https://github.com/JustAGod1/bevm") {
                        state.popup_manager.open(PopupMessage::new("Ошибочка", format!("Не смог открыть ссылку: {}", e)))
                    }
                }
-               if MenuItem::new(im_str!("Telegram")).build(ui) {
+               if ui.menu_item("Telegram") {
                    if let Err(e) = open_in_app("https://t.me/notsofunnyhere") {
                        state.popup_manager.open(PopupMessage::new("Ошибочка", format!("Не смог открыть ссылку: {}", e)))
                    }
                }
-               if MenuItem::new(im_str!("Методичка")).build(ui) {
+               if ui.menu_item("Методичка") {
                    if let Err(e) = open_in_app("https://yadi.sk/i/brIICpYtcb3LMg") {
                        state.popup_manager.open(PopupMessage::new("Ошибочка", format!("Не смог открыть ссылку: {}", e)))
                    }
                }
-               if MenuItem::new(im_str!("Моя телега")).build(ui) {
+               if ui.menu_item("Моя телега") {
                    if let Err(e) = open_in_app("https://t.me/JustAG0d") {
                        state.popup_manager.open(PopupMessage::new("Ошибочка", format!("Не смог открыть ссылку: {}", e)))
                    }
@@ -46,21 +46,21 @@ impl Tool for HelpTool {
                     Желательно придерживаться правил общения описанных на nometa.xyz.")
                }
            });
-            ui.menu(im_str!("Оформление"), true, || {
-                if MenuItem::new(im_str!("Темное")).build(ui) {
+            ui.menu("Оформление", || {
+                if ui.menu_item("Темное") {
                     state.theme_requested = Some(Dark)
                 }
-                if MenuItem::new(im_str!("Светлое")).build(ui) {
+                if ui.menu_item("Светлое") {
                     state.theme_requested = Some(Light)
                 }
-                if MenuItem::new(im_str!("Классическое")).build(ui) {
+                if ui.menu_item("Классическое") {
                     state.theme_requested = Some(Classic)
                 }
-                if MenuItem::new(im_str!("Редактор")).selected(state.editor_enabled).build(ui) {
+                if ui.menu_item_config("Редактор").selected(state.editor_enabled).build() {
                     state.editor_enabled = !state.editor_enabled
                 }
             })
         });
-        ui.text_wrapped(ImString::new(self.text).as_ref());
+        ui.text_wrapped(self.text);
     }
 }

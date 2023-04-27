@@ -58,7 +58,7 @@ impl MicroCommandDescriptor {
     fn make_description(&self, ui: &Ui, cmd: &dyn MicroCommand) {
         let opcode = cmd.opcode();
 
-        ui.text_wrapped(ImString::new(self.global_descriptions).as_ref());
+        ui.text_wrapped(self.global_descriptions);
 
         ui.separator();
         ui.text("Вертикальное представление:");

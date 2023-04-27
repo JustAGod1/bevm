@@ -4,7 +4,7 @@ use crate::ui::gui::{GuiState, PopupManager};
 
 pub trait Popup {
 
-    fn name(&self) -> ImString;
+    fn name(&self) -> String;
 
     fn draw(&mut self, ui: &Ui, state: &mut GuiState) -> bool;
 
@@ -27,14 +27,14 @@ impl PopupMessage {
 }
 
 impl Popup for PopupMessage {
-    fn name(&self) -> ImString {
-        ImString::new(self.title.as_str())
+    fn name(&self) -> String {
+        self.title.clone()
     }
 
     fn draw(&mut self, ui: &Ui, state: &mut GuiState) -> bool {
         let mut open = true;
         let name = self.name();
-        let popup = ui.popup_modal(name.as_ref())
+        let popup = ui.modal_popup_config(name)
             .opened(&mut open)
             .always_auto_resize(true);
 
@@ -64,12 +64,12 @@ impl PopupParseError {
 impl Popup for PopupParseError {
 
 
-    fn name(&self) -> ImString { ImString::from("Ошибка разбора".to_string()) }
+    fn name(&self) -> String { "Ошибка разбора".to_string() }
 
     fn draw(&mut self, ui: &Ui, state: &mut GuiState) -> bool{
         let mut open = true;
         let name = self.name();
-        let popup = ui.popup_modal(name.as_ref())
+        let popup = ui.modal_popup_config(name)
             .opened(&mut open)
             .always_auto_resize(true);
 

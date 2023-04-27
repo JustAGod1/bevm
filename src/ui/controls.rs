@@ -42,17 +42,17 @@ impl SmartControlsTool {
 
     fn draw_control(&mut self, state: &mut GuiState, ui: &Ui) {
         if let Some(tok) = ui.begin_menu_bar() {
-            if MenuItem::new(im_str!("Сброс ЭВМ!")).build(ui) {
+            if ui.menu_item("Сброс ЭВМ!") {
                 state.computer.reset_memory();
                 state.computer.registers = Registers::new()
             }
-            tok.end(ui);
+            tok.end();
         }
 
         let w = ui.content_region_avail().get(0).unwrap() / 3.0 - 6.0;
         let h = ui.content_region_avail().get(1).unwrap() / 2.0 - 3.0;
 
-        if ui.button(im_str!("Микро шаг"), [w, h]) {
+        if ui.button_with_size("Микро шаг", [w, h]) {
             self.make_history_entry(state);
             state.computer.registers.set_execute_by_tick(true);
             state.computer.registers.set_lever(false);
@@ -64,9 +64,9 @@ impl SmartControlsTool {
             ui.tooltip_text("Устанавливает флаг \"Исполнение\" в 1\nУстанавливает флаг \"Состояние тумблера\" в 0.\nУстанавливается флаг \"Программа\" в 0.\nВыполняется текущая микрокоманда и происходит переход к следующнй.")
         }
 
-        ui.same_line(0.0);
+        ui.same_line();
 
-        if ui.button(im_str!("Большой шаг"), [w,h]) {
+        if ui.button_with_size("Большой шаг", [w,h]) {
             self.make_history_entry(state);
             state.computer.registers.set_execute_by_tick(false);
             state.computer.registers.set_lever(false);
@@ -77,9 +77,9 @@ impl SmartControlsTool {
             ui.tooltip_text("Устанавливает флаг \"Исполнение\" в 0\nУстанавливает флаг \"Состояние тумблера\" в 0.\nУстанавливается флаг \"Программа\" в 0.\nВыполняется полный цикл микрокоманд.\nГрубо говоря выполняется одна команда.")
         }
 
-        ui.same_line(0.0);
+        ui.same_line();
 
-        if ui.button(im_str!("Назад"), [w, h]) && !self.history.is_empty(){
+        if ui.button_with_size("Назад", [w, h]) && !self.history.is_empty(){
             let entry = self.history.pop().unwrap();
             state.computer.registers = entry.registers;
 
@@ -89,7 +89,7 @@ impl SmartControlsTool {
             ui.tooltip_text("Возвращает регистры к состоянию в котором они были до того как вы нажали последнюю кнопку.")
         }
 
-        if ui.button(im_str!("Пуск"), [w,h]) {
+        if ui.button_with_size("Пуск", [w,h]) {
             self.make_history_entry(state);
             state.computer.registers.r_micro_command_counter = 0xA8;
             state.computer.registers.set_execute_by_tick(false);
@@ -99,8 +99,8 @@ impl SmartControlsTool {
         if ui.is_item_hovered() {
             ui.tooltip_text("Устанавливает флаг \"Исполнение\" в 0\nУстанавливает флаг \"Состояние тумблера\" в 1.\nУстанавливается флаг \"Программа\" в 1.\nУстанавливает СчМК в 0A8 то есть сбрасывает состояние регистров ЭВМ\nЭВМ начинает самостоятельно выполнять команду за командой.")
         }
-        ui.same_line(0.0);
-        if ui.button(im_str!("Продолжить"), [w,h]) {
+        ui.same_line();
+        if ui.button_with_size("Продолжить", [w,h]) {
             self.make_history_entry(state);
             state.computer.registers.set_execute_by_tick(false);
             state.computer.registers.set_lever(true);
@@ -109,8 +109,8 @@ impl SmartControlsTool {
         if ui.is_item_hovered() {
             ui.tooltip_text("Устанавливает флаг \"Исполнение\" в 0\nУстанавливает флаг \"Состояние тумблера\" в 1.\nУстанавливается флаг \"Программа\" в 1.\nНе изменяет состояние регистров ЭВМ\nЭВМ начинает самостоятельно выполнять команду за командой.")
         }
-        ui.same_line(0.0);
-        if ui.button(im_str!("Прыжок"), [w,h]) {
+        ui.same_line();
+        if ui.button_with_size("Прыжок", [w,h]) {
             state.jump_requested = true
         }
         if ui.is_item_hovered() {

@@ -45,7 +45,7 @@ impl Tool for StatusTool {
 
                     }
                     let mut updated = bit_at!(state.computer.registers.r_status, $location);
-                    ui.checkbox(ImString::new($name).as_ref(), &mut updated);
+                    ui.checkbox($name, &mut updated);
                     state.computer.registers.r_status = set_bit_at!(state.computer.registers.r_status, $location, updated);
 
                     if ui.is_item_hovered() {

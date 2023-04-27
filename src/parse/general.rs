@@ -211,11 +211,11 @@ impl GeneralCommand for SimpleCommand {
         ui.text(format!("Мнемоника: {}", self.name));
         ui.text(format!("Маска: {:X}", self.mask));
 
-        ui.text_wrapped(ImString::from(format!("Описание: {}", self.description)).as_ref());
+        ui.text_wrapped(format!("Описание: {}", self.description));
 
         let excessive = opcode.bitand(self.mask.bitxor(0xFFFF));
         if excessive != 0 {
-            ui.text_wrapped(ImString::from(format!("Примечание: опкод {:0>4X} был посчитан командой {} так как бинарное и между опкодом {:0>4X} и маской команды {:0>4X} выдало значение равное той же маске {:0>4X}. Таким образом мы просто полностью игнорируем тот факт, что опкод не равен маске.", opcode, self.name, opcode, self.mask, self.mask)).as_ref())
+            ui.text_wrapped(format!("Примечание: опкод {:0>4X} был посчитан командой {} так как бинарное и между опкодом {:0>4X} и маской команды {:0>4X} выдало значение равное той же маске {:0>4X}. Таким образом мы просто полностью игнорируем тот факт, что опкод не равен маске.", opcode, self.name, opcode, self.mask, self.mask))
         }
     }
 }
@@ -349,7 +349,7 @@ impl GeneralCommand for AddressCommand {
             ui.text(format!("X: {:0>3X}", address))
         }
 
-        ui.text_wrapped(ImString::from(format!("Описание: {}", self.description)).as_ref())
+        ui.text_wrapped(format!("Описание: {}", self.description))
 
 
     }

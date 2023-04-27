@@ -1,5 +1,5 @@
 use crate::model::{Computer, MemoryCell, Memory, Register};
-use imgui::{Ui, ChildWindow, StyleColor, Id, im_str, ImString, MenuItem, FocusedWidget, StyleVar, Io};
+use imgui::{Ui, ChildWindow, StyleColor, Id, im_str, ImString, MenuItem, FocusedWidget, StyleVar, Io, InputTextFlags};
 use crate::parse::mc::parse;
 use crate::parse::{Parser, CommandInfo};
 use crate::ui::window::Tool;
@@ -28,33 +28,33 @@ impl CellRepresentation {
 
     fn draw_hex(&self, cell: &mut MemoryCell, ui: &Ui) {
         let cell = cell;
-        let mut data = ImString::from(format!("{:0>4X}", cell.get()));
+        let mut data = format!("{:0>4X}", cell.get());
         let width_t = ui.push_item_width(70.0);
-        if ui.input_text(im_str!(""), &mut data)
+        if ui.input_text("", &mut data)
             .chars_hexadecimal(true)
             .chars_noblank(true)
             .build() {
-            let data = data.to_str();
-            if let Ok(parsed) = u16::from_str_radix(data, 16) {
+            let data = data;
+            if let Ok(parsed) = u16::from_str_radix(&data, 16) {
                 cell.set(parsed)
             }
         }
-        width_t.pop(ui);
+        width_t.end();
     }
     fn draw_binary(&self, cell: &mut MemoryCell, ui: &Ui) {
         let cell = cell;
-        let mut data = ImString::from(format!("{:0>16b}", cell.get()));
+        let mut data = format!("{:0>16b}", cell.get());
         let width_t = ui.push_item_width(160.0);
-        if ui.input_text(im_str!(""), &mut data)
+        if ui.input_text("", &mut data)
             .chars_decimal(true)
             .chars_noblank(true)
             .build() {
-            let data = data.to_str();
-            if let Ok(parsed) = u16::from_str_radix(data, 2) {
+            let data = data;
+            if let Ok(parsed) = u16::from_str_radix(&data, 2) {
                 cell.set(parsed)
             }
         }
-        width_t.pop(ui);
+        width_t.end()
     }
     fn draw(&self, cell: &mut MemoryCell, ui: &Ui) {
         match self {
@@ -92,9 +92,9 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> Tool for CellsTool<I
         let mut focused: Option<I> = None;
 
         for cell in data.iter_mut() {
-            let token = ui.push_id(Id::Int(idx as i32));
+            let token = ui.push_id(idx.to_string());
             ui.text(format!("{:0>3X}", idx));
-            ui.same_line(0.0);
+            ui.same_line();
             let t = if current_executed == idx as u16 {
                 if state.jump_requested {
                     ui.set_scroll_here_y();
@@ -106,29 +106,29 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> Tool for CellsTool<I
             };
             self.representation.draw(cell, ui);
             if let Some(t) = t {
-                t.pop(ui);
+                t.pop();
             }
             if ui.is_item_focused() {
                 focused = Some(parser.parse(cell.get()))
             }
 
 
-            ui.same_line(0.0);
+            ui.same_line();
             let command = parser.parse(cell.get());
 
             if parser.supports_rev_parse() {
-                let mut content = ImString::with_capacity(50);
+                let mut content = String::with_capacity(50);
                 if next_rev_focused {
-                    ui.set_keyboard_focus_here(FocusedWidget::Next);
+                    ui.set_keyboard_focus_here();
                     next_rev_focused = false
                 }
                 content.push_str(command.mnemonic().as_str());
-                if ui.input_text(im_str!("###mnemonic"), &mut content)
-                    .callback_always(false)
+                if ui.input_text("###mnemonic", &mut content)
+                    .flags(InputTextFlags::empty())
                     .enter_returns_true(true)
                     .build()
                 {
-                    match parser.rev_parse(content.to_str()) {
+                    match parser.rev_parse(&content) {
                         Ok(opcode) => {
                             next_rev_focused = true;
                             cell.set(opcode);
@@ -146,7 +146,7 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> Tool for CellsTool<I
                 ui.text(command.mnemonic().as_str());
             }
 
-            token.pop(ui);
+            token.pop();
             idx += 1;
         }
 
@@ -157,7 +157,7 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> Tool for CellsTool<I
             state.current_command = Some(Box::new(parser.parse(data.get(current_executed as usize).unwrap().get())));
         }
 
-        s_token.pop(ui);
+        s_token.pop();
     }
 }
 
@@ -172,7 +172,7 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
 
     fn draw_menu_bar(&mut self, state: &mut GuiState, ui: &Ui) {
         ui.menu_bar(|| {
-            ui.menu(im_str!("Опции"), true, || {
+            ui.menu("Опции", || {
                 self.draw_file_actions(state, ui);
                 self.draw_representation_selection(ui);
             });
@@ -361,37 +361,37 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
     }
 
     fn draw_file_actions(&mut self, state: &mut GuiState, ui: &Ui) {
-        if let Some(token) = ui.begin_menu(im_str!("Файл"), true) {
-            if MenuItem::new(im_str!("Сохранить")).build(ui) {
+        if let Some(token) = ui.begin_menu("Файл") {
+            if ui.menu_item("Сохранить") {
                 self.on_save_to_file(state);
             }
-            if MenuItem::new(im_str!("Загрузить")).build(ui) {
+            if ui.menu_item("Загрузить") {
                 self.on_load_from_file(state);
             }
-            if MenuItem::new(im_str!("Загрузить .bpc")).build(ui) {
+            if ui.menu_item("Загрузить .bpc") {
                 self.load_bpc(state);
             }
 
-            token.end(ui)
+            token.end()
         }
     }
 
 
     fn draw_representation_selection(&mut self, ui: &Ui) {
-        if let Some(token) = ui.begin_menu(im_str!("Представление ячеек"), true) {
-            if MenuItem::new(ImString::from(CellRepresentation::Hex.title()).as_ref())
+        if let Some(token) = ui.begin_menu("Представление ячеек") {
+            if ui.menu_item_config(CellRepresentation::Hex.title())
                 .selected(self.representation == CellRepresentation::Hex)
-                .build(ui)
+                .build()
             {
                 self.representation = CellRepresentation::Hex
             }
-            if MenuItem::new(ImString::from(CellRepresentation::Binary.title()).as_ref())
+            if ui.menu_item_config(CellRepresentation::Binary.title())
                 .selected(self.representation == CellRepresentation::Binary)
-                .build(ui)
+                .build()
             {
                 self.representation = CellRepresentation::Binary
             }
-            token.end(ui)
+            token.end()
         }
     }
 }
