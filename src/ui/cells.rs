@@ -5,6 +5,7 @@ use crate::ui::popup::{PopupMessage, PopupParseError};
 use crate::ui::window::Tool;
 use imgui::__core::cell::RefMut;
 use imgui::{InputTextFlags, Io, StyleColor, StyleVar, Ui};
+use rfd::FileDialog;
 use std::cell::RefCell;
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
@@ -180,23 +181,14 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
     }
 
     fn on_save_to_file(&mut self, state: &mut GuiState) {
-        let filename = match native_dialog::FileDialog::new()
+        let Some(filename) = FileDialog::new()
             .add_filter("", &["mm"])
-            .show_save_single_file()
-        {
-            Ok(r) => match r {
-                Some(f) => f,
-                _ => {
-                    return;
-                }
-            },
-            Err(e) => {
+            .save_file() else {
                 state.popup_manager.open(PopupMessage::new(
                     "Ошибка выбора файла",
-                    format!("Не могу открыть окно выбора файла: {}", e),
+                    format!("Не удалось выбрать файл"),
                 ));
                 return;
-            }
         };
         let filename = filename
             .into_os_string()
@@ -251,25 +243,17 @@ impl<I: CommandInfo, P: Parser<I>, F: Fn(&Computer) -> u16> CellsTool<I, P, F> {
     fn choose_file(state: &mut GuiState, filter: Option<&str>) -> Option<File> {
         let filter = filter.map(|f| [f]);
         let dialog = if filter.is_none() {
-            native_dialog::FileDialog::new()
+            FileDialog::new()
         } else {
-            native_dialog::FileDialog::new().add_filter("", filter.as_ref().unwrap())
+            FileDialog::new().add_filter("", filter.as_ref().unwrap())
         };
 
-        let file_name = match dialog.show_open_single_file() {
-            Ok(r) => match r {
-                Some(f) => f,
-                _ => {
-                    return None;
-                }
-            },
-            Err(e) => {
-                state.popup_manager.open(PopupMessage::new(
-                    "Ошибка выбора файла",
-                    format!("Не могу открыть окно выбора файла: {}", e),
-                ));
-                return None;
-            }
+        let Some(file_name) = dialog.pick_file() else {
+            state.popup_manager.open(PopupMessage::new(
+                "Ошибка выбора файла",
+                format!("Не удалось выбрать файл"),
+            ));
+            return None;
         };
         let file_name = file_name
             .into_os_string()

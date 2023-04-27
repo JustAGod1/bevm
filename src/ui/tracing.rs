@@ -6,6 +6,7 @@ use crate::ui::popup::PopupMessage;
 use crate::ui::window::Tool;
 use imgui::TreeNodeId::Str;
 use imgui::{Io, Ui};
+use rfd::FileDialog;
 
 use std::cell::RefCell;
 use std::fs::OpenOptions;
@@ -276,22 +277,14 @@ impl Tool for TraceTool {
 
 fn write_to_file(s: &str, postfix: &str, popup_manager: &mut PopupManager) -> Option<String> {
     let postfixs = [postfix];
-    let dialog = native_dialog::FileDialog::new().add_filter("", &postfixs);
+    let dialog = FileDialog::new().add_filter("", &postfixs);
 
-    let filename = match dialog.show_save_single_file() {
-        Ok(r) => match r {
-            Some(f) => f,
-            _ => {
-                return None;
-            }
-        },
-        Err(e) => {
-            popup_manager.open(PopupMessage::new(
+    let Some(filename) =  dialog.pick_file() else {
+        popup_manager.open(PopupMessage::new(
                 "Ошибка выбора файла",
-                format!("Не могу открыть окно выбора файла: {}", e),
+                format!("Не могу открыть окно выбора файла"),
             ));
             return None;
-        }
     };
 
     let filename = filename
