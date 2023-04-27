@@ -266,6 +266,14 @@ impl Computer {
             self.io_devices[num].ready = false;
         }
 
+        let counter_now_null = self.registers.r_counter == 0;
+
+        println!("{} {}", self.registers.r_counter, counter_now_null);
+        if self.registers.get_null() != counter_now_null {
+            self.registers.set_null(counter_now_null);
+            self.log(true, format!("Установил флаг нуля в {}", if counter_now_null { "1" } else { "0" }));
+        }
+
         self.log(true, "Сбросил флаг ВВОД-ВВЫОД".to_string());
         self.registers.set_io(false);
     }

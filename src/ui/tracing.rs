@@ -4,11 +4,9 @@ use crate::ui::gui::{GuiState, PopupManager};
 use crate::ui::open_in_app;
 use crate::ui::popup::PopupMessage;
 use crate::ui::window::Tool;
-
 use imgui::TreeNodeId::Str;
-use imgui::{im_str, ComboBox, ImString, Io, TreeNode, Ui};
+use imgui::{Io, Ui};
 
-use std::borrow::Cow::Owned;
 use std::cell::RefCell;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -53,13 +51,13 @@ fn html_converter(ui: &Ui, state: &RefCell<&mut GuiState>, tracing: &mut dyn FnM
     let text = "Сохраняет трассировку в формате HTML\n\n\
     Это удобно когда вам нужно быстро на нее посмотреть, но неудобно когда нужно ее куда то вставить.\n\n";
 
-    ui.text_wrapped(ImString::new(text).as_ref());
+    ui.text_wrapped(text);
 
-    let save = ui.button(im_str!("Сохранить"), [160.0, 30.0]);
+    let save = ui.button_with_size("Сохранить", [160.0, 30.0]);
     if ui.is_item_hovered() {
         ui.tooltip_text("Просто сохраняет трассировку");
     }
-    let open = ui.button(im_str!("Открыть"), [160.0, 30.0]);
+    let open = ui.button_with_size("Открыть", [160.0, 30.0]);
     if ui.is_item_hovered() {
         ui.tooltip_text("Сохраняет и пытается открыть");
     }
@@ -124,8 +122,8 @@ fn csv_converter(ui: &Ui, state: &RefCell<&mut GuiState>, tracing: &mut dyn FnMu
     Все поля закавыченны\n
     ";
 
-    ui.text_wrapped(ImString::new(text).as_ref());
-    if ui.button(im_str!("Погнали!"), [160.0, 30.0]) {
+    ui.text_wrapped(text);
+    if ui.button_with_size("Погнали!", [160.0, 30.0]) {
         let trace = tracing();
 
         let mut content = String::new();
@@ -155,9 +153,17 @@ fn csv_converter(ui: &Ui, state: &RefCell<&mut GuiState>, tracing: &mut dyn FnMu
 fn enum_chooser<'a, T>(ui: &Ui, name: &str, num: &mut usize, variants: &'a [(&str, T)]) -> &'a T {
     let title = variants.get(*num).unwrap().0;
 
-    ComboBox::new(ImString::new(name).as_ref())
-        .preview_value(ImString::new(title).as_ref())
-        .build_simple(ui, num, variants, &|a| Owned(ImString::new(a.0)));
+    if let Some(t) = ui.begin_combo(name, title) {
+        for (idx, name) in variants.iter().map(|a| a.0).enumerate() {
+            if ui.selectable(name) {
+                *num = idx;
+            }
+            if idx == *num {
+                ui.set_item_default_focus();
+            }
+        }
+        t.end()
+    }
 
     return &variants.get(*num).unwrap().1;
 }
@@ -170,8 +176,8 @@ fn latex_converter(ui: &Ui, state: &RefCell<&mut GuiState>, tracing: &mut dyn Fn
     Просто запустите pdflatex повторно и всё отрендерится как доктор прописал.\n\
     Те, кто пользуется make'ом или latexmk могут спать спокойно. \nСпасибо за внимание!";
 
-    ui.text_wrapped(ImString::new(text).as_ref());
-    if ui.button(im_str!("Погнали!"), [160.0, 30.0]) {
+    ui.text_wrapped(text);
+    if ui.button_with_size("Погнали!", [160.0, 30.0]) {
         let trace: Tracing = tracing();
 
         let header = trace.header.join(" & ");
@@ -217,8 +223,8 @@ fn latex_converter(ui: &Ui, state: &RefCell<&mut GuiState>, tracing: &mut dyn Fn
             &mut state.borrow_mut().popup_manager,
         );
     }
-    TreeNode::new(Str(im_str!("Предупреждение")))
-        .build(ui, || ui.text_wrapped(ImString::new(warning).as_ref()));
+    ui.tree_node_config(Str("Предупреждение"))
+        .build(|| ui.text_wrapped(warning));
 }
 
 impl Tool for TraceTool {
@@ -226,16 +232,16 @@ impl Tool for TraceTool {
         let text = "Инструмент для создания таблицы трассировок.\n\n\
             Максимальная длина таблицы:";
 
-        ui.text_wrapped(ImString::new(text).as_ref());
+        ui.text_wrapped(text);
 
-        TreeNode::new(Str(im_str!("Подробности"))).build(ui, || {
+        ui.tree_node_config(Str("Подробности")).build(|| {
             let text =
                 "Выполняет программу шаг за шагом так же, как если бы вы нажимали кнопку \"Большой шаг\" и записывали бы это в табличку.\n\n\
                 Прямо следует из этого факта, что трассировка будет выполняться начиная с текущего значения регистра СК\n\n\
                 БЭВМ будет выполнять команду за командой до тех пор пока либо не достигнет максимальной длинны таблицы, либо в регистре РК не появится значение F000\
                 , что, как правило, означает, что выполнилась команда HLT";
 
-            ui.text_wrapped(ImString::new(text).as_ref());
+            ui.text_wrapped(text);
             ui.separator();
             let text =
                 "Таким образом, если вы хотите выполнить трассировку программы вам стоит:\n\
@@ -244,22 +250,21 @@ impl Tool for TraceTool {
                 3. Установить регистр СК в начало программы \n\
                 4. Выполнить трассировку";
 
-            ui.text_wrapped(ImString::new(text).as_ref());
+            ui.text_wrapped(text);
             ui.separator();
         });
 
         let width_t = ui.push_item_width(160.0);
-        ui.input_int(im_str!("###max_len"), &mut self.max_len)
-            .build();
-        width_t.pop(ui);
+        ui.input_int("###max_len", &mut self.max_len).build();
+        width_t.end();
         self.max_len = self.max_len.clamp(0, 200);
 
         let text = "Формат таблицы:";
-        ui.text_wrapped(ImString::new(text).as_ref());
+        ui.text_wrapped(text);
         let converter = enum_chooser(ui, "###converter", &mut self.converter, &self.converters);
 
         let text = "Вид трассировки:";
-        ui.text_wrapped(ImString::new(text).as_ref());
+        ui.text_wrapped(text);
         let tracer = enum_chooser(ui, "###tracer", &mut self.tracer, &self.tracers);
 
         let cell = RefCell::new(state);

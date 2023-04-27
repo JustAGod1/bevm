@@ -19,19 +19,19 @@ impl RegistersTool {
 impl Tool for RegistersTool {
     fn draw(&mut self, ui: &Ui, _io: &Io, state: &mut GuiState) {
         fn reg_field(ui: &Ui, computer: &mut Computer, register: Register, tooltip: &str) {
-            let mut content = ImString::from(register.format(computer));
+            let mut content = register.format(computer);
             let t = ui.push_item_width(80.0);
             if ui
-                .input_text(ImString::from(register.mnemonic()).as_ref(), &mut content)
+                .input_text(register.mnemonic(), &mut content)
                 .chars_hexadecimal(true)
                 .allow_tab_input(false)
                 .build()
             {
-                if let Ok(parsed) = u32::from_str_radix(content.to_str(), 16) {
+                if let Ok(parsed) = u32::from_str_radix(&content, 16) {
                     register.assign_wide(computer, parsed);
                 }
             }
-            t.pop(ui);
+            t.end();
             if ui.is_item_hovered() {
                 ui.tooltip_text(tooltip);
             }
@@ -39,10 +39,10 @@ impl Tool for RegistersTool {
 
         let computer = &mut state.computer;
 
-        ui.text(im_str!("Основные регистры"));
+        ui.text("Основные регистры");
         unsafe {
             igBeginTable(
-                im_str!("general_reg").as_ptr(),
+                ImString::new("general_reg").as_ptr(),
                 2,
                 ImGuiTableFlags_None as c_int,
                 ImVec2::new(250.0, 0.0),
@@ -66,15 +66,9 @@ impl Tool for RegistersTool {
             igEndTable();
         }
 
-        ui.text(im_str!("Регистры микрокоманд"));
+        ui.text("Регистры микрокоманд");
         unsafe {
-            igBeginTable(
-                im_str!("mc_reg").as_ptr(),
-                2,
-                ImGuiTableFlags_None as c_int,
-                ImVec2::new(250.0, 0.0),
-                0.0,
-            );
+            igBeginTable(im_str!("mc_reg").as_ptr(), 2, ImGuiTableFlags_None as c_int, ImVec2::new(250.0, 0.0), 0.0);
             igTableNextRow(ImGuiTableRowFlags_None as c_int, 0.0);
             igTableNextColumn();
             reg_field(
