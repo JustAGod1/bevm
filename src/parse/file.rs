@@ -1,81 +1,53 @@
-use std::io::{Read, BufReader, BufRead, Error};
-use crate::parse::{Parser, CommandInfo};
+use crate::parse::{CommandInfo, Parser};
+
 use std::collections::HashMap;
-use nom::bytes::complete::{take_while, take_till, is_not, take_while_m_n, tag};
-use nom::sequence::{preceded, terminated};
-use nom::character::complete::{char};
-use nom::combinator::map_res;
-use nom::character::is_space;
-use nom::{IResult, Finish, FindSubstring};
-use nom::branch::alt;
-
-
+use std::io::{BufRead, BufReader, Read};
 
 pub fn parse_file<T: Read, I: CommandInfo, P: Parser<I>>(
     data: &mut T,
     parser: &P,
     max_size: u16,
 ) -> Result<Vec<(u16, u16)>, String> {
-    let mut reader = BufReader::new(data);
+    let reader = BufReader::new(data);
     let mut cursor = 0;
-
-    let mut line_buf = String::with_capacity(128);
 
     let mut variables = HashMap::<String, u16>::new();
     let mut pre_result = Vec::<(u16, String, u16)>::new();
 
-    let mut line_num = 0;
+    for (line, line_num) in reader.lines().zip(1..).take(u16::MAX.into()) {
+        let line = line.map_err(|x| x.to_string())?;
 
-    loop {
-        line_num += 1;
-        line_buf.clear();
-        match reader.read_line(&mut line_buf) {
-            Ok(v) => if v == 0 { break; } else { () },
-            Err(err) => {
-                return Err(err.to_string());
-            }
-        }
-
-        let line = line_buf.to_string();
-
-        let parsed = parse_line(line.as_str());
-
-        if parsed.is_none() {
+        let Some(parsed) = parse_line(line.as_str()) else {
             continue;
-        }
-
-        let parsed = parsed.unwrap();
+        };
 
         macro_rules! err {
             ($msg:expr) => {
-                format!("Ошибка в строке {}. Номер строки: {}. Сообщение: {}", line_buf, line_num, $msg)
+                format!("Ошибка в строке {}. Номер строки: {}. Сообщение: {}", line, line_num, $msg)
             };
         }
-
-
         match parsed {
             DataLine::Operator(name, arg) => {
                 if name != "pos" {
-                    return Err(err!(format!("Неизвестный оператор {}", name)));
+                    return Err(err!(format!("Неизвестный оператор {name}")));
                 }
 
-                let pos = match u16::from_str_radix(arg, 16) {
-                    Err(_) => return Err(err!(format!("Не могу распарсить число {}", arg))),
-                    Ok(v) => v
+                let Ok(pos) = u16::from_str_radix(arg, 16) else {
+                    return Err(err!(format!("Не могу распарсить число {arg}")))
                 };
 
                 if pos < cursor {
-                    return Err(err!(format!("Явно указанная позиция курсора меньше текущей позиции курсора. Текущая {:X}. Укзаная {:X}.", cursor, pos)));
+                    return Err(err!(format!("Явно указанная позиция курсора меньше текущей позиции курсора. Текущая {cursor:X}. Укзаная {pos:X}.")));
                 }
 
                 if pos > max_size {
-                    return Err(err!(format!("Явно указанная позиция курсора больше максимально допустимой. Максимальная {:X}. Укзаная {:X}.", max_size, pos)));
+                    return Err(err!(format!("Явно указанная позиция курсора больше максимально допустимой. Максимальная {max_size:X}. Укзаная {pos:X}." )));
                 }
 
-                cursor = pos
+                cursor = pos;
             }
             DataLine::Command(command, name) => {
-                pre_result.push((cursor, command.to_string(), line_num));
+                pre_result.push((cursor, command.to_string(), line_num as u16));
 
                 if let Some(name) = name {
                     variables.insert(name.to_string(), cursor);
@@ -84,11 +56,13 @@ pub fn parse_file<T: Read, I: CommandInfo, P: Parser<I>>(
                 cursor += 1;
 
                 if cursor > max_size {
-                    return Err(err!(format!("Превышена максимальная позиция. Максимальная {:X}.", max_size)));
+                    return Err(err!(format!(
+                        "Превышена максимальная позиция. Максимальная {max_size:X}."
+                    )));
                 }
             }
         }
-    };
+    }
 
     let mut result = Vec::<(u16, u16)>::new();
 
@@ -101,7 +75,9 @@ pub fn parse_file<T: Read, I: CommandInfo, P: Parser<I>>(
         for x in cmd.chars() {
             if !is_variable_name_char(x) && var {
                 if !variables.contains_key(name.as_str()) {
-                    return Err(format!("Ошибка в строке {}. Не могу найти переменную {}.", line, name));
+                    return Err(format!(
+                        "Ошибка в строке {line}. Не могу найти переменную {name}."
+                    ));
                 }
                 builder.push_str(format!("{:X}", variables.get(name.as_str()).unwrap()).as_str());
                 if x != '%' {
@@ -110,21 +86,19 @@ pub fn parse_file<T: Read, I: CommandInfo, P: Parser<I>>(
                 }
                 name = String::new();
             } else if x == '%' {
-                var = true
+                var = true;
+            } else if var {
+                name.push(x);
             } else {
-                if var {
-                    name.push(x)
-                } else {
-                    builder.push(x)
-
-                }
-
+                builder.push(x);
             }
         }
 
         if var {
             if !variables.contains_key(name.as_str()) {
-                return Err(format!("Ошибка в строке {}. Не могу найти переменную {}.", line, name));
+                return Err(format!(
+                    "Ошибка в строке {line}. Не могу найти переменную {name}."
+                ));
             }
             builder.push_str(format!("{:X}", variables.get(name.as_str()).unwrap()).as_str());
         }
@@ -134,95 +108,86 @@ pub fn parse_file<T: Read, I: CommandInfo, P: Parser<I>>(
         if parser.supports_rev_parse() {
             match parser.rev_parse(str) {
                 Ok(v) => result.push((pos, v)),
-                Err(e) => {
-                    match u16::from_str_radix(str, 16) {
-                        Ok(v) => result.push((pos, v)),
-                        Err(_) => return Err(format!("Ошибка в строке {}({}): {}", line, str, e))
-                    }
-                }
+                Err(e) => match u16::from_str_radix(str, 16) {
+                    Ok(v) => result.push((pos, v)),
+                    Err(_) => return Err(format!("Ошибка в строке {}({}): {}", line, str, e)),
+                },
             }
         } else {
             match u16::from_str_radix(str, 16) {
                 Ok(v) => result.push((pos, v)),
-                Err(_) => return Err(format!("Ошибка в строке {}({}): Не могу распарсить число.", line, str))
+                Err(_) => {
+                    return Err(format!(
+                        "Ошибка в строке {line}({str}): Не могу распарсить число."
+                    ))
+                }
             }
-
         }
-
     }
-
 
     Ok(result)
 }
 
+#[derive(Debug, PartialEq)]
 enum DataLine<'a> {
     Operator(&'a str, &'a str),
     Command(&'a str, Option<&'a str>),
 }
 
 fn is_variable_name_char(ch: char) -> bool {
-    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9')
+    ch.is_ascii_alphabetic() || ch.is_ascii_digit()
 }
 
-
-// Да я притащил либу для парсинга простой хуйни
 fn parse_line(line: &str) -> Option<DataLine> {
-    let line = line.find_substring("#").map_or(line, |p| { &line[0..p] }).trim();
+    // remove comments
+    let line = line.split_terminator('#').next().unwrap_or(line).trim();
 
-    if line.len() <= 0 {
+    if line.is_empty() {
         return None;
+    };
+
+    // if starts with $
+    if let Some(stripped) = line.strip_prefix('$') {
+        let mut iter = (stripped).split_ascii_whitespace();
+        let first = iter.next();
+        let second = iter.next();
+        return Some(DataLine::Operator(first?.trim(), second?.trim()));
     }
 
-    fn is_hex_digit(c: char) -> bool {
-        c.is_digit(16)
-    }
-
-    fn operand(input: &str) -> IResult<&str, &str, > {
-        preceded(char('$'), take_while(|c| is_variable_name_char(c)))(input)
-    }
-
-    fn command(input: &str) -> IResult<&str, &str> {
-        is_not("$")(input)
-    }
-
-    fn command_line(input: &str) -> (&str, Option<&str>) {
-        let (input, command) = command(input).finish().ok().unwrap();
-
-        let (_, name) = match operand(input).finish() {
-            Ok((p, v)) => (p, Some(v.trim())),
-            Err(_) => (input, None)
-        };
-
-
-        return (command, name);
-    }
-
-    fn operand_line(input: &str) -> Option<(&str, &str)> {
-        match operand(input).finish() {
-            Ok((p, v)) => Some((v.trim(), p)),
-            Err(_) => None
-        }
-    }
-
-    if let Some((name, arg)) = operand_line(line) {
-        return Some(DataLine::Operator(name.trim(), arg.trim()));
-    }
-
-    let (cmd, operand) = command_line(line);
-
-
-    Some(DataLine::Command(cmd.trim(), operand.map(|s| s.trim())))
+    // if not
+    let mut iter = line.split('$');
+    let first = iter.next();
+    let second = iter.next();
+    return Some(DataLine::Command(first?.trim(), second.map(str::trim)));
 }
-
 
 #[cfg(test)]
 mod tests {
-    use core::ops::*;
-    use crate::parse::file::parse_line;
+    use crate::parse::file::{parse_line, DataLine};
 
     #[test]
     fn parse() {
-        parse_line("58: Huy $ded#de#abc");
+        let res = parse_line("58: Huy $ded#de#abc");
+        assert_eq!(res, Some(DataLine::Command("58: Huy", Some("ded"))));
+    }
+
+    #[test]
+    fn parse_program_line_by_line() {
+        let test_cases = [
+            ("$pos 10", Some(DataLine::Operator("pos", "10"))),
+            ("CLA $start", Some(DataLine::Command("CLA", Some("start")))),
+            ("BMI %then", Some(DataLine::Command("BMI %then", None))),
+            ("BR %start", Some(DataLine::Command("BR %start", None))),
+            ("$pos 15", Some(DataLine::Operator("pos", "15"))),
+            (
+                "ISZ 2 $then",
+                Some(DataLine::Command("ISZ 2", Some("then"))),
+            ),
+            ("BR %start", Some(DataLine::Command("BR %start", None))),
+        ];
+
+        for (input, expected) in test_cases {
+            assert_eq!(parse_line(input), expected);
+        }
     }
 }
-

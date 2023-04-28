@@ -1,7 +1,7 @@
-use crate::ui::window::Tool;
-use imgui::{Ui, ChildWindow, im_str, Io};
 use crate::ui::gui::GuiState;
-use crate::ui::{relative_width, relative_height};
+use crate::ui::window::Tool;
+use crate::ui::{relative_height, relative_width};
+use imgui::{Io, Ui};
 
 struct ToolContainer {
     len: f32,
@@ -60,51 +60,59 @@ impl LayoutTool {
         }
     }
 
-    fn draw_tool(container: &mut ToolContainer, w: f32, h: f32, ui: &Ui, io: &Io, state: &mut GuiState) {
+    fn draw_tool(
+        container: &mut ToolContainer,
+        w: f32,
+        h: f32,
+        ui: &Ui,
+        io: &Io,
+        state: &mut GuiState,
+    ) {
         ui.child_window("cont")
             .border(false)
             .size([w, h])
-            .build(|| {
-                container.tool.draw(ui, io, state)
-            });
+            .build(|| container.tool.draw(ui, io, state));
     }
 
     fn draw_vertical(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
-        let mut i = 0usize;
         let len = self.tools.len();
-        for container in &mut self.tools {
+        for (i, container) in self.tools.iter_mut().enumerate() {
             let id_tok = ui.push_id_int(i as i32);
             container.len = relative_height(container.len, ui);
-            Self::draw_tool(container, 0.0, if i == len - 1 { 0.0} else {container.len }, ui, io, state);
+            Self::draw_tool(
+                container,
+                0.0,
+                if i == len - 1 { 0.0 } else { container.len },
+                ui,
+                io,
+                state,
+            );
             if i < len - 1 {
                 ui.button_with_size("s", [relative_width(0.0, ui), 4.0]);
                 if ui.is_item_active() {
                     let delta = *io.mouse_delta.get(1).unwrap();
-                    container.len+= delta;
+                    container.len += delta;
                     container.len = container.len.max(20.0);
                 }
             }
             id_tok.pop();
-            i += 1
         }
     }
     fn draw_horizontal(&mut self, ui: &Ui, io: &Io, state: &mut GuiState) {
-        let mut i: usize = 0;
         let len = self.tools.len();
-        for container in &mut self.tools {
+        for (i, container) in self.tools.iter_mut().enumerate() {
             let id_tok = ui.push_id_int(i as i32);
             Self::draw_tool(container, container.len, 0.0, ui, io, state);
             if i < len - 1 {
                 ui.same_line();
                 ui.button_with_size("s", [4.0, relative_height(0.0, ui)]);
                 if ui.is_item_active() {
-                    let delta = *io.mouse_delta.get(0).unwrap();
-                    container.len+= delta;
+                    let delta = *io.mouse_delta.first().unwrap();
+                    container.len += delta;
                     container.len = container.len.max(20.0);
                 }
                 ui.same_line();
             }
-            i += 1;
             id_tok.pop();
         }
     }
@@ -116,10 +124,12 @@ impl LayoutTool {
         self
     }
 
-    pub fn append<T>(mut self, len: i32, tool: T) -> Self
-        where T: Tool, T: 'static
+    pub fn append<T>(mut self, len: f32, tool: T) -> Self
+    where
+        T: Tool,
+        T: 'static,
     {
-        self.tools.push(ToolContainer::new(len as f32, tool));
-        return self;
+        self.tools.push(ToolContainer::new(len, tool));
+        self
     }
 }

@@ -1,7 +1,6 @@
-use crate::model::Computer;
-use imgui::{Ui, im_str, ChildWindow, MenuItem, Io, StyleColor};
+use crate::ui::gui::GuiState;
 use crate::ui::window::Tool;
-use crate::ui::gui::{PopupManager, Gui, GuiState};
+use imgui::{Io, StyleColor, Ui};
 
 pub struct LogTool {
     show_micro: bool,
@@ -18,13 +17,15 @@ impl LogTool {
 }
 
 impl Tool for LogTool {
-    fn draw(&mut self, ui: &Ui, io: &Io, gui: &mut GuiState) {
+    fn draw(&mut self, ui: &Ui, _io: &Io, gui: &mut GuiState) {
         ui.menu_bar(|| {
             if let Some(t) = ui.begin_menu("Фильтр") {
-                if ui.menu_item_config("Показывать лог микрокоманд")
+                if ui
+                    .menu_item_config("Показывать лог микрокоманд")
                     .selected(self.show_micro)
-                    .build() {
-                    self.show_micro = !self.show_micro
+                    .build()
+                {
+                    self.show_micro = !self.show_micro;
                 }
                 t.end();
             }
@@ -36,14 +37,20 @@ impl Tool for LogTool {
         });
 
         let mut last_idx = 0u16;
-        for l in gui.computer.logs().iter()
+        for l in gui
+            .computer
+            .logs()
+            .iter()
             .filter(|l| !l.micro_command || self.show_micro)
         {
             if last_idx != l.command_counter {
                 ui.separator();
                 last_idx = l.command_counter;
             }
-            ui.text(format!("СК: {:0>3X}, СчМК: {:0>2X}, msg: {}", l.command_counter, l.micro_counter, l.info))
+            ui.text(format!(
+                "СК: {:0>3X}, СчМК: {:0>2X}, msg: {}",
+                l.command_counter, l.micro_counter, l.info
+            ));
         }
         if self.last_size != gui.computer.logs().len() {
             ui.set_scroll_here_y();

@@ -1,47 +1,20 @@
-use crate::parse::{Parser, CommandInfo};
-use core::ops::*;
+use crate::parse::{CommandInfo, Parser};
+
+use core::ops::{BitAnd, BitOr, BitXor};
+use imgui::Ui;
 use std::collections::HashMap;
 use std::rc::Rc;
-use imgui::{Ui, im_str, ImString};
-use crate::ui::centralized_text;
-macro_rules! io_command {
-    ($v:expr, $mask:expr, $mnemonic:expr) => {
-        let _ : u16 = $mask;
-        let _ : &str = $mnemonic;
-        if $v.bitand($mask).bitand($mask) == $mask {
-            return format!("{} {:0>2X}", $mnemonic, $v.bitand(0xFF))
-        }
-    };
-}
-
-macro_rules! address_command {
-    ($v:expr, $mask:expr, $mnemonic:expr) => {
-        let _ : u16 = $mask;
-        let _ : &str = $mnemonic;
-        if $v.bitand($mask).bitand($mask) == $mask {
-            return format!("{} {:0>3X}", $mnemonic, $v.bitand(0x7FF))
-        }
-    };
-}
-
-macro_rules! simple_command {
-    ($v:expr, $mask:expr, $mnemonic:expr) => {
-        let _ : u16 = $mask;
-        if $v.bitand($mask).bitand($mask) == $mask {
-            return $mnemonic.to_string();
-        }
-    };
-}
 
 pub struct GeneralParser {
     sorted: Vec<Rc<dyn GeneralCommand>>,
-    mnemonic_map: HashMap<String, Rc<dyn GeneralCommand>>
+    mnemonic_map: HashMap<String, Rc<dyn GeneralCommand>>,
 }
 
 impl GeneralParser {
-
     fn register<T>(&mut self, command: T)
-        where T:'static, T: GeneralCommand
+    where
+        T: 'static,
+        T: GeneralCommand,
     {
         let rc1 = Rc::new(command);
         let rc2 = rc1.clone();
@@ -52,64 +25,156 @@ impl GeneralParser {
     pub fn new() -> GeneralParser {
         let mut parser = GeneralParser {
             sorted: vec![],
-            mnemonic_map: HashMap::new()
+            mnemonic_map: HashMap::new(),
         };
 
-
-        parser.register(SimpleCommand::new(0xFF00, "HZF", "Команда для которой не задано поведение. То есть она ничего не делает."));
-        parser.register(SimpleCommand::new(0xFE00, "HZE", "Команда для которой не задано поведение. То есть она ничего не делает."));
-        parser.register(SimpleCommand::new(0xFD00, "HZD", "Команда для которой не задано поведение. То есть она ничего не делает."));
-        parser.register(SimpleCommand::new(0xFC00, "HZC", "Команда для которой не задано поведение. То есть она ничего не делает."));
+        parser.register(SimpleCommand::new(
+            0xFF00,
+            "HZF",
+            "Команда для которой не задано поведение. То есть она ничего не делает.",
+        ));
+        parser.register(SimpleCommand::new(
+            0xFE00,
+            "HZE",
+            "Команда для которой не задано поведение. То есть она ничего не делает.",
+        ));
+        parser.register(SimpleCommand::new(
+            0xFD00,
+            "HZD",
+            "Команда для которой не задано поведение. То есть она ничего не делает.",
+        ));
+        parser.register(SimpleCommand::new(
+            0xFC00,
+            "HZC",
+            "Команда для которой не задано поведение. То есть она ничего не делает.",
+        ));
 
         parser.register(SimpleCommand::new(0xF700, "ROR", "Сдвигает биты в регистре А вправо. При этом содержимое С попадает в старший бит А, а младший бит А попадает в С"));
         parser.register(SimpleCommand::new(0xFB00, "DI", "Запрещает прерывания"));
 
         parser.register(SimpleCommand::new(0xF300, "CLC", "Устанавливает С в 0"));
-        parser.register(SimpleCommand::new(0xF500, "CMC", "Инвертирует С. То есть, если С было равно 1, оно станет 0 и наоборот."));
+        parser.register(SimpleCommand::new(
+            0xF500,
+            "CMC",
+            "Инвертирует С. То есть, если С было равно 1, оно станет 0 и наоборот.",
+        ));
         parser.register(SimpleCommand::new(0xF600, "ROL", "Сдвигает биты в регистре А влево. При этом содержимое С попадает в младший бит А, а старший бит А попадает в С."));
-        parser.register(SimpleCommand::new(0xF900, "DEC", "Уменьшает значение А на 1"));
+        parser.register(SimpleCommand::new(
+            0xF900,
+            "DEC",
+            "Уменьшает значение А на 1",
+        ));
         parser.register(SimpleCommand::new(0xFA00, "EI", "Разрешает прерывания"));
-        parser.register(SimpleCommand::new(0xF200, "CLA", "Устанавливает значение регистра А в 0"));
+        parser.register(SimpleCommand::new(
+            0xF200,
+            "CLA",
+            "Устанавливает значение регистра А в 0",
+        ));
         parser.register(SimpleCommand::new(0xF400, "CMA", "Инвертирует содержимое регистра А. То есть каждый бит регистра А, который равен 0, станет 1 и наоборот."));
-        parser.register(SimpleCommand::new(0xF800, "INC", "Увеличивает значение регистра А на 1"));
+        parser.register(SimpleCommand::new(
+            0xF800,
+            "INC",
+            "Увеличивает значение регистра А на 1",
+        ));
         parser.register(SimpleCommand::new(0xF100, "NOP", "Команда, которая не делает ничего. Удобно применять вместе с ISZ для инкремента какой-либо ячейки памяти."));
-        parser.register(AddressCommand::new_io(0xE300, "OUT", "Присваивает указаному ВУ значение из регистра А"));
+        parser.register(AddressCommand::new_io(
+            0xE300,
+            "OUT",
+            "Присваивает указаному ВУ значение из регистра А",
+        ));
         parser.register(SimpleCommand::new(0xF000, "HLT", "Выключает ЭВМ."));
         parser.register(AddressCommand::new_io(0xE100, "TSF", "Присваивает 6 биту регистра РС статус готовности указанного ВУ. Затем, если 6 бит РС равен единице, регистр СК увеличивается на единицу."));
-        parser.register(AddressCommand::new_io(0xE200, "IN", "Берет значение из данного ВУ и кладет его в 8 младших бит регистра А"));
-        parser.register(AddressCommand::new_address(0xB000, "BEQ", "Присваивает регистру СК значение X, если регистр А равен 0."));
-        parser.register(AddressCommand::new_io(0xE000, "CLF", "Устанавливает флаг готовности данного ВУ в 0."));
-        parser.register(AddressCommand::new_address(0x3000, "MOV", "Присваивает ячейке по адресу X значение из регистра А"));
+        parser.register(AddressCommand::new_io(
+            0xE200,
+            "IN",
+            "Берет значение из данного ВУ и кладет его в 8 младших бит регистра А",
+        ));
+        parser.register(AddressCommand::new_address(
+            0xB000,
+            "BEQ",
+            "Присваивает регистру СК значение X, если регистр А равен 0.",
+        ));
+        parser.register(AddressCommand::new_io(
+            0xE000,
+            "CLF",
+            "Устанавливает флаг готовности данного ВУ в 0.",
+        ));
+        parser.register(AddressCommand::new_address(
+            0x3000,
+            "MOV",
+            "Присваивает ячейке по адресу X значение из регистра А",
+        ));
         parser.register(AddressCommand::new_address(0x5000, "ADC", "Складывает значение из ячейки по адресу X с регистром А и добавляет 1, если С равен 1."));
-        parser.register(AddressCommand::new_address(0x6000, "SUB", "Вычитает значение ячейки по адресу X из регистра А."));
-        parser.register(AddressCommand::new_address(0x9000, "BPL", "Присваивает регистру СК значение X, если значение в регистре А больше или равно 0."));
-        parser.register(AddressCommand::new_address(0xA000, "BMI", "Присваивает регистру СК значение X, если значение в регистре А строго меньше 0."));
-        parser.register(AddressCommand::new_address(0xC000, "BR", "Присваивает регистру СК значение X"));
-        parser.register(AddressCommand::new_address(0x1000, "AND", "Присваивает регистру А результат бинарного И между регистром А и значением в ячейке X"));
-        parser.register(AddressCommand::new_address(0x4000, "ADD", "Присваивает регистру А результат сложения регистром А и значением в ячейке X"));
-        parser.register(AddressCommand::new_address(0x8000, "BCS", "Присваивает регистру СК значение X, если С равно 1"));
+        parser.register(AddressCommand::new_address(
+            0x6000,
+            "SUB",
+            "Вычитает значение ячейки по адресу X из регистра А.",
+        ));
+        parser.register(AddressCommand::new_address(
+            0x9000,
+            "BPL",
+            "Присваивает регистру СК значение X, если значение в регистре А больше или равно 0.",
+        ));
+        parser.register(AddressCommand::new_address(
+            0xA000,
+            "BMI",
+            "Присваивает регистру СК значение X, если значение в регистре А строго меньше 0.",
+        ));
+        parser.register(AddressCommand::new_address(
+            0xC000,
+            "BR",
+            "Присваивает регистру СК значение X",
+        ));
+        parser.register(AddressCommand::new_address(
+            0x1000,
+            "AND",
+            "Присваивает регистру А результат бинарного И между регистром А и значением в ячейке X",
+        ));
+        parser.register(AddressCommand::new_address(
+            0x4000,
+            "ADD",
+            "Присваивает регистру А результат сложения регистром А и значением в ячейке X",
+        ));
+        parser.register(AddressCommand::new_address(
+            0x8000,
+            "BCS",
+            "Присваивает регистру СК значение X, если С равно 1",
+        ));
         parser.register(AddressCommand::new_address(0x2000, "JSR", "Команда для организации логики подпрограмм. Значение регистра СК будет положено в ячейку по адресу X после чего регистру СК будет присвоенное значение X + 1"));
-        parser.register(AddressCommand::new_address(0x0000, "ISZ", "Увеличивает значение в ячейке по адресу X на 1. После чего, если значение в этой ячейке больше 0, увеличивает СК на 1 тем самым \"перепрыгивает\" следующую команду."));
+        parser.register(AddressCommand::new_address(0x0000, "ISZ", "Увеличивает значение в ячейке по адресу X на 1. После чего, если значение в этой ячейке больше или равно 0, увеличивает СК на 1 тем самым \"перепрыгивает\" следующую команду."));
 
-        parser.register(AddressCommand::new_address(0x7000, "HZA7", "Команда для которой не задано поведение. То есть она ничего не делает."));
-        parser.register(AddressCommand::new_address(0xD000, "HZAD", "Команда для которой не задано поведение. То есть она ничего не делает."));
+        parser.register(AddressCommand::new_address(
+            0x7000,
+            "HZA7",
+            "Команда для которой не задано поведение. То есть она ничего не делает.",
+        ));
+        parser.register(AddressCommand::new_address(
+            0xD000,
+            "HZAD",
+            "Команда для которой не задано поведение. То есть она ничего не делает.",
+        ));
 
-        parser.sorted.sort_by(|a,b| {
-            let l = format!("{:b}", a.mask()).chars().into_iter().filter(|c| *c =='1').count();
-            let r = format!("{:b}", b.mask()).chars().into_iter().filter(|c| *c =='1').count();
+        parser.sorted.sort_by(|a, b| {
+            let l = format!("{:b}", a.mask())
+                .chars()
+                .filter(|c| *c == '1')
+                .count();
+            let r = format!("{:b}", b.mask())
+                .chars()
+                .filter(|c| *c == '1')
+                .count();
             r.cmp(&l)
         });
 
         parser
     }
-
 }
 
 impl Parser<GeneralCommandInfo> for GeneralParser {
     fn parse(&self, v: u16) -> GeneralCommandInfo {
-        for command in self.sorted.iter() {
+        for command in &self.sorted {
             if command.matching(v) {
-                return GeneralCommandInfo::new(command.clone(), v)
+                return GeneralCommandInfo::new(command.clone(), v);
             }
         }
         panic!()
@@ -120,25 +185,22 @@ impl Parser<GeneralCommandInfo> for GeneralParser {
     }
 
     fn rev_parse(&self, str: &str) -> Result<u16, String> {
-        let mnemonic = str.split(" ").next();
+        let mnemonic = str.split(' ').next();
         if mnemonic.is_none() {
-            return Err(format!("Пустая строка получается"))
+            return Err("Пустая строка получается".to_string());
         }
 
         let mnemonic = mnemonic.unwrap().to_uppercase();
         let command = self.mnemonic_map.get(mnemonic.as_str());
         if command.is_none() {
-            return Err(format!("Неизвестная мнемоника {}", mnemonic))
+            return Err(format!("Неизвестная мнемоника {mnemonic}"));
         }
 
         command.unwrap().rev_parse(str)
-
     }
 }
 
-
 trait GeneralCommand {
-
     fn matching(&self, cmd: u16) -> bool {
         self.mask().bitand(cmd).bitand(self.mask()) == self.mask()
     }
@@ -159,7 +221,7 @@ trait GeneralCommand {
 struct SimpleCommand {
     name: &'static str,
     description: &'static str,
-    mask: u16
+    mask: u16,
 }
 
 impl SimpleCommand {
@@ -167,7 +229,7 @@ impl SimpleCommand {
         SimpleCommand {
             name,
             description,
-            mask
+            mask,
         }
     }
 }
@@ -176,10 +238,10 @@ impl GeneralCommand for SimpleCommand {
     fn file_string(&self, cmd: u16) -> String {
         let excessive = cmd.bitand(self.mask.bitxor(0xFFFF));
 
-        if excessive != 0 {
-            format!("{:0>4X}", cmd)
-        } else {
+        if excessive == 0 {
             self.mnemonic().to_owned()
+        } else {
+            format!("{cmd:0>4X}")
         }
     }
 
@@ -201,7 +263,10 @@ impl GeneralCommand for SimpleCommand {
 
     fn rev_parse(&self, s: &str) -> Result<u16, String> {
         if s.trim().to_uppercase() != self.name {
-            return Err(format!("{} является безадресной командой и не принимает аргументов", self.name))
+            return Err(format!(
+                "{} является безадресной командой и не принимает аргументов",
+                self.name
+            ));
         }
         Ok(self.mask)
     }
@@ -223,7 +288,7 @@ struct AddressCommand {
     name: &'static str,
     description: &'static str,
     mask: u16,
-    io: bool
+    io: bool,
 }
 
 impl AddressCommand {
@@ -232,7 +297,7 @@ impl AddressCommand {
             name,
             description,
             mask,
-            io: false
+            io: false,
         }
     }
     fn new_io(mask: u16, name: &'static str, description: &'static str) -> AddressCommand {
@@ -240,7 +305,7 @@ impl AddressCommand {
             name,
             description,
             mask,
-            io: true
+            io: true,
         }
     }
 }
@@ -263,37 +328,43 @@ impl GeneralCommand for AddressCommand {
             panic!();
         }
 
-        let address = if !self.io { data.bitand(0x7FF) } else { data.bitand(0xF) };
+        let address = if !self.io {
+            data.bitand(0x7FF)
+        } else {
+            data.bitand(0xF)
+        };
         if data.bitand(0x0800) != 0 {
             format!("{} ({:0>3X})", self.name, address)
         } else {
             format!("{} {:0>3X}", self.name, address)
         }
-
     }
 
     fn rev_parse(&self, s: &str) -> Result<u16, String> {
-        let splited = s.trim().split(" ").collect::<Vec<&str>>();
-
+        let splited = s.trim().split(' ').collect::<Vec<&str>>();
 
         if splited.len() > 2 {
-            return Err(format!("Неожиданные штуки:{}", splited.iter().skip(2).fold("".to_string(), |a,b| format!("{} {}", a, b))))
+            return Err(format!(
+                "Неожиданные штуки:{}",
+                splited
+                    .iter()
+                    .skip(2)
+                    .fold("".to_string(), |a, b| format!("{} {}", a, b))
+            ));
         }
 
         if splited.len() < 2 {
-            return Err("Ожидалось два параметра".to_string())
+            return Err("Ожидалось два параметра".to_string());
         }
 
         let address = splited.get(1).unwrap().trim();
 
-
         let indirect = if !address.is_empty() {
-            if address.chars().nth(0usize).unwrap() == '(' {
+            if address.starts_with('(') {
                 if address.chars().nth(address.len() - 1).unwrap() != ')' {
-                    return Err("Не закрытая скобка".to_string())
-                } else {
-                    true
+                    return Err("Не закрытая скобка".to_string());
                 }
+                true
             } else {
                 false
             }
@@ -302,34 +373,30 @@ impl GeneralCommand for AddressCommand {
         };
 
         let address = if indirect {
-            address.get(1..address.len()-1).unwrap()
-        } else { address};
+            address.get(1..address.len() - 1).unwrap()
+        } else {
+            address
+        };
 
         if let Ok(parsed) = u16::from_str_radix(address, 16) {
-            let max = if self.io {
-                0xF
-            } else {
-                0x7FF
-            };
+            let max = if self.io { 0xF } else { 0x7FF };
             if parsed > max {
                 if self.io {
                     Err("Максимально адресуемое ВУ 0xF".to_string())
                 } else {
                     Err("Максимально адресуема память 0x7FF".to_string())
                 }
+            } else if indirect {
+                Ok(self.mask.bitor(parsed).bitor(0x0800))
             } else {
-                if indirect {
-                    Ok(self.mask.bitor(parsed).bitor(0x0800))
-                } else {
-                    Ok(self.mask.bitor(parsed))
-
-                }
+                Ok(self.mask.bitor(parsed))
             }
         } else {
-            Err(format!("Ошибка во время парсинга числа {}", splited.get(1).unwrap()))
+            Err(format!(
+                "Ошибка во время парсинга числа {}",
+                splited.get(1).unwrap()
+            ))
         }
-
-
     }
 
     fn draw_highlight(&self, ui: &Ui, opcode: u16) {
@@ -350,16 +417,13 @@ impl GeneralCommand for AddressCommand {
         }
 
         ui.text_wrapped(format!("Описание: {}", self.description))
-
-
     }
 }
 
 pub struct GeneralCommandInfo {
     info: Rc<dyn GeneralCommand>,
-    opcode: u16
+    opcode: u16,
 }
-
 
 impl GeneralCommandInfo {
     fn new(info: Rc<dyn GeneralCommand>, opcode: u16) -> GeneralCommandInfo {
@@ -383,9 +447,8 @@ impl CommandInfo for GeneralCommandInfo {
 
 #[cfg(test)]
 mod tests {
-    use core::ops::*;
     use crate::parse::general::GeneralParser;
-    use crate::parse::{Parser, CommandInfo};
+    use crate::parse::{CommandInfo, Parser};
 
     #[test]
     fn test() {

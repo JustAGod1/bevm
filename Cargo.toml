@@ -8,15 +8,10 @@ build = "build.rs"
 winres = "0.1"
 
 [dependencies]
-nom = "7.0.0"
-path-clean = "0.1.0"
+path-clean = "1.0.1"
 sdl2 = { version = "0.35.2", features = ["bundled"] }
 gl = "0.10.0"
 imgui-sdl2 = "0.15.1"
-nfd = { git = "https://github.com/saurvs/nfd-rs.git" }
 imgui = "0.9.0"
 imgui-opengl-renderer = "0.12.0"
-
-
-[target.x86_64-pc-windows-msvc]
-rustflags = ["-C", "target-feature=+crt-static"]
+rfd = "0.11.3"
