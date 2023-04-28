@@ -112,6 +112,7 @@ impl MicroCommandDescriptor {
     }
 }
 
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum ExecutionResult {
     Success,
     Jumped,
@@ -1241,7 +1242,7 @@ impl OperationalCommand0 {
                 if complement == Complement::Left {
                     format!("!{}", r.mnemonic())
                 } else {
-                    r.mnemonic()
+                    r.mnemonic().into()
                 }
             })
             .unwrap_or(if complement == Complement::Left {
@@ -1256,7 +1257,7 @@ impl OperationalCommand0 {
                 if complement == Complement::Right {
                     format!("!{}", r.mnemonic())
                 } else {
-                    r.mnemonic()
+                    r.mnemonic().into()
                 }
             })
             .unwrap_or(if complement == Complement::Right {

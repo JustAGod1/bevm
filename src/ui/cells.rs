@@ -26,7 +26,6 @@ impl CellRepresentation {
     }
 
     fn draw_hex(&self, cell: &mut MemoryCell, ui: &Ui) {
-        let cell = cell;
         let mut data = format!("{:0>4X}", cell.get());
         let width_t = ui.push_item_width(70.0);
         if ui

@@ -423,7 +423,7 @@ fn general_tracing(computer: &mut Computer, len: usize) -> Tracing {
         computer.registers.set_execute_by_tick(false);
         computer.registers.set_lever(false);
         computer.registers.set_program_mode(false);
-        while !matches!(computer.micro_step(), ExecutionResult::Halted) {}
+        computer.find(|&res| res == ExecutionResult::Halted);
 
         let mut line = vec![
             format!("{pos:0>3X}"),

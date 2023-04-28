@@ -33,8 +33,7 @@ impl Tool for WindowTool {
             let title = self.tools.get(self.tool_selector).unwrap().0;
             if self.tools.len() > 1 {
                 ui.menu(title, || {
-                    for i in 0..self.tools.len() {
-                        let name = ImString::new(self.tools.get(i).unwrap().0);
+                    for (i, (name, _)) in self.tools.iter().enumerate() {
                         if ui
                             .menu_item_config(name)
                             .selected(i == self.tool_selector)
@@ -58,7 +57,7 @@ impl Tool for WindowTool {
 }
 
 impl WindowTool {
-    pub fn single_tool<T>(_width: i32, _height: i32, tool_name: &'static str, tool: T) -> WindowTool
+    pub fn single_tool<T>(_width: f32, _height: f32, tool_name: &'static str, tool: T) -> WindowTool
     where
         T: Tool,
         T: 'static,

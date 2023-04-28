@@ -117,9 +117,9 @@ impl LayoutTool {
         }
     }
 
-    pub fn size(mut self, width: i32, height: i32) -> Self {
-        self.width = width as f32;
-        self.height = height as f32;
+    pub fn size(mut self, width: f32, height: f32) -> Self {
+        self.width = width;
+        self.height = height;
 
         self
     }

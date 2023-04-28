@@ -29,6 +29,9 @@ use self::sdl2::keyboard::Scancode;
 
 use crate::ui::tracing::TraceTool;
 
+const WIDTH: u32 = 1500;
+const HEIGHT: u32 = 1000;
+
 pub struct PopupManager {
     popup_delayed: Vec<Box<dyn Popup>>,
 }
@@ -117,15 +120,15 @@ impl Gui {
                                 .append(
                                     250.,
                                     WindowTool::single_tool(
-                                        0,
-                                        250,
+                                        0.,
+                                        250.,
                                         "Состояние ЭВМ",
                                         LayoutTool::new_horizontal("regandstat")
                                             .append(
                                                 300.,
                                                 WindowTool::single_tool(
-                                                    300,
-                                                    0,
+                                                    300.,
+                                                    0.,
                                                     "Регистры",
                                                     RegistersTool::new(),
                                                 ),
@@ -133,8 +136,8 @@ impl Gui {
                                             .append(
                                                 0.,
                                                 WindowTool::single_tool(
-                                                    0,
-                                                    0,
+                                                    0.,
+                                                    0.,
                                                     "Разбор регистра статуса (РС)",
                                                     StatusTool::new(),
                                                 ),
@@ -147,15 +150,15 @@ impl Gui {
                                         .append(
                                             335.,
                                             WindowTool::single_tool(
-                                                315,
-                                                0,
+                                                315.,
+                                                0.,
                                                 "Панель управления",
                                                 LayoutTool::new_vertical("execandio")
                                                     .append(
                                                         135.,
                                                         WindowTool::single_tool(
-                                                            0,
-                                                            135,
+                                                            0.,
+                                                            135.,
                                                             "Управление исполнением",
                                                             SmartControlsTool::new(),
                                                         ),
@@ -163,8 +166,8 @@ impl Gui {
                                                     .append(
                                                         0.,
                                                         WindowTool::single_tool(
-                                                            0,
-                                                            0,
+                                                            0.,
+                                                            0.,
                                                             "Внешние устройства",
                                                             IOTool::new(),
                                                         ),
@@ -178,13 +181,13 @@ impl Gui {
                                                 .append(
                                                     0.,
                                                     WindowTool::single_tool(
-                                                        0,
-                                                        0,
+                                                        0.,
+                                                        0.,
                                                         "Информация о команде",
                                                         CommandHighlightTool::new(),
                                                     ),
                                                 )
-                                                .size(315, 0),
+                                                .size(315., 0.),
                                         )
                                         .append(
                                             0.,
@@ -250,14 +253,12 @@ impl Gui {
             .video()
             .expect("Expect to initialize video system");
 
-        {
-            let gl_attr = video.gl_attr();
-            gl_attr.set_context_profile(sdl2::video::GLProfile::Core);
-            gl_attr.set_context_version(3, 0);
-        }
+        let gl_attr = video.gl_attr();
+        gl_attr.set_context_profile(sdl2::video::GLProfile::Core);
+        gl_attr.set_context_version(3, 0);
 
         let mut window = video
-            .window("BasePC 2.0", 1500, 1000)
+            .window("BasePC 2.0", WIDTH, HEIGHT)
             .position_centered()
             .resizable()
             .opengl()
@@ -300,11 +301,8 @@ impl Gui {
                         break 'outer;
                     }
                     Event::DropFile { filename, .. } => {
-                        if self.popup.is_some() {
-                            self.popup
-                                .as_mut()
-                                .unwrap()
-                                .on_file_dropped(filename.as_str())
+                        if let Some(popup) = self.popup.as_mut() {
+                            popup.on_file_dropped(filename.as_str())
                         }
                     }
                     Event::KeyDown { scancode: _, .. } | Event::KeyUp { scancode: _, .. } => {
@@ -350,7 +348,7 @@ impl Gui {
 
             window.gl_swap_window();
 
-            ::std::thread::sleep(::std::time::Duration::new(0, 1_000_000_000u32 / 40));
+            std::thread::sleep(::std::time::Duration::from_secs(1) / 40);
             if closed {
                 break;
             }
@@ -374,14 +372,16 @@ impl Gui {
     fn draw_ui(&mut self, ui: &Ui, io: &Io, sdl_window: &mut SDLWindow) -> bool {
         let mut opened = true;
 
-        let mut window = ui.window("Main").opened(&mut opened);
+        let mut window = ui
+            .window("Main")
+            .opened(&mut opened)
+            .size(
+                [sdl_window.size().0 as f32, sdl_window.size().1 as f32],
+                Condition::Always,
+            )
+            .no_decoration()
+            .movable(false);
 
-        window = window.size(
-            [sdl_window.size().0 as f32, sdl_window.size().1 as f32],
-            Condition::Always,
-        );
-        window = window.no_decoration();
-        window = window.movable(false);
         if self.state.editor_enabled {
             let mut style = ui.clone_style();
             ui.window("Editor")

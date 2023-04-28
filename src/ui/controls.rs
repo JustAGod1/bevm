@@ -1,3 +1,5 @@
+use std::{collections::VecDeque, borrow::BorrowMut};
+
 use crate::model::Registers;
 
 use crate::parse::mc::ExecutionResult;
@@ -8,7 +10,7 @@ use imgui::{Io, Ui};
 
 pub struct SmartControlsTool {
     auto_run: bool,
-    history: Vec<HistoryEntry>,
+    history: VecDeque<HistoryEntry>,
 }
 
 struct HistoryEntry {
@@ -21,11 +23,13 @@ impl Tool for SmartControlsTool {
     }
 }
 
+const HISTORY_MAX_SIZE: usize = 15;
+
 impl SmartControlsTool {
-    pub fn new() -> SmartControlsTool {
-        SmartControlsTool {
+    pub fn new() -> Self {
+        Self {
             auto_run: false,
-            history: vec![],
+            history: VecDeque::with_capacity(HISTORY_MAX_SIZE),
         }
     }
 
@@ -34,10 +38,10 @@ impl SmartControlsTool {
             registers: state.computer.registers.clone(),
         };
 
-        self.history.push(entry);
-        if self.history.len() > 15 {
-            self.history.remove(0usize);
+        if self.history.len() >= HISTORY_MAX_SIZE {
+            self.history.pop_front();
         }
+        self.history.push_back(entry);
     }
 
     fn draw_control(&mut self, state: &mut GuiState, ui: &Ui) {
@@ -71,7 +75,7 @@ impl SmartControlsTool {
             state.computer.registers.set_execute_by_tick(false);
             state.computer.registers.set_lever(false);
             state.computer.registers.set_program_mode(false);
-            while !matches!(state.computer.micro_step(), ExecutionResult::Halted) {}
+            state.computer.find(|res| res == &ExecutionResult::Halted);
         }
         if ui.is_item_hovered() {
             ui.tooltip_text("Устанавливает флаг \"Исполнение\" в 0\nУстанавливает флаг \"Состояние тумблера\" в 0.\nУстанавливается флаг \"Программа\" в 0.\nВыполняется полный цикл микрокоманд.\nГрубо говоря выполняется одна команда.")
@@ -80,7 +84,7 @@ impl SmartControlsTool {
         ui.same_line();
 
         if ui.button_with_size("Назад", [w, h]) && !self.history.is_empty() {
-            let entry = self.history.pop().unwrap();
+            let entry = self.history.pop_back().unwrap();
             state.computer.registers = entry.registers;
 
             self.auto_run = false
@@ -121,18 +125,19 @@ impl SmartControlsTool {
             self.auto_run = true;
         }
         if self.auto_run {
-            for _ in 0..100 {
-                if matches!(state.computer.micro_step(), ExecutionResult::Halted) {
-                    if state.computer.registers.get_lever() {
-                        state.popup_manager.open(PopupMessage::new(
-                            "Остановочка",
-                            "ЭВМ завершила свою работу",
-                        ));
-                    }
-                    state.computer.registers.set_lever(false);
-                    self.auto_run = false;
-                    break;
+            if state
+                .computer.borrow_mut()
+                .take(100)
+                .find(|res| res == &ExecutionResult::Halted).is_some()
+            {
+                if state.computer.registers.get_lever() {
+                    state.popup_manager.open(PopupMessage::new(
+                        "Остановочка",
+                        "ЭВМ завершила свою работу",
+                    ));
                 }
+                state.computer.registers.set_lever(false);
+                self.auto_run = false;
             }
         }
     }

@@ -34,7 +34,7 @@ impl Register {
         }
     }
 
-    pub fn mnemonic(&self) -> String {
+    pub fn mnemonic(&self) -> &'static str {
         match self {
             Register::Status => "РС",
             Register::McCounter => "СчМК",
@@ -46,7 +46,6 @@ impl Register {
             Register::CommandCounter => "СК",
             Register::Counter => "А",
         }
-        .to_string()
     }
 
     pub fn assign_wide(&self, computer: &mut Computer, data: u32) {
@@ -155,10 +154,9 @@ pub struct Memory<I: CommandInfo, P: Parser<I>> {
     phantom: PhantomData<I>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct MemoryCell {
     data: u16,
-    last_touched: SystemTime,
     pub mnemonic: Option<String>,
     pub name: Option<String>,
 }
@@ -167,7 +165,6 @@ impl MemoryCell {
     pub fn new() -> MemoryCell {
         MemoryCell {
             data: 0,
-            last_touched: SystemTime::UNIX_EPOCH,
             mnemonic: None,
             name: None,
         }
@@ -175,7 +172,6 @@ impl MemoryCell {
 
     pub fn set(&mut self, data: u16) {
         self.data = data;
-        self.last_touched = SystemTime::now();
     }
 
     pub fn get(&self) -> u16 {
@@ -215,13 +211,7 @@ pub struct Computer {
 
 impl Computer {
     fn mem(len: usize) -> Vec<MemoryCell> {
-        let mut result = Vec::<MemoryCell>::new();
-
-        for _ in 0..len {
-            result.push(MemoryCell::new());
-        }
-
-        result
+        vec![MemoryCell::default(); len]
     }
 
     pub fn process_io_command(&mut self) {
@@ -363,10 +353,18 @@ impl Computer {
         let cmd = parse(opcode);
         self.registers.r_micro_command = opcode;
         let result = cmd.run(self);
-        if !matches!(result, ExecutionResult::Jumped) {
+        if result != ExecutionResult::Jumped {
             self.registers.r_micro_command_counter =
                 self.registers.r_micro_command_counter.wrapping_add(1);
         }
         result
+    }
+}
+
+impl Iterator for Computer {
+    type Item = ExecutionResult;
+
+    fn next(&mut self) -> Option<<Self as Iterator>::Item> {
+        Some(self.micro_step())
     }
 }
