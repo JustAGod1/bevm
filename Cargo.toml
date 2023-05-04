@@ -21,3 +21,7 @@ imgui-sdl2 = "0.15.1"
 imgui = "0.9.0"
 imgui-opengl-renderer = "0.12.0"
 rfd = "0.11.3"
+
+[[bin]]
+name = "bevm"
+path="src/main.rs"
