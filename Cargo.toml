@@ -6,6 +6,8 @@ license-file="LICENSE"
 description="Emulator of Basic EVM for itmo students"
 keywords = ["emulator", "education", "asm", "itmo", "basepc"]
 categories = ["emulators"]
+homepage = "https://github.com/JustAGod1/bevm"
+repository = "https://github.com/JustAGod1/bevm"
 build = "build.rs"
 
 [target.'cfg(windows)'.build-dependencies]
