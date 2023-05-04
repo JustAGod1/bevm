@@ -2,6 +2,10 @@
 name = "evm"
 version = "0.1.0"
 edition = "2018"
+license-file="LICENSE"
+description="Emulator of Basic EVM for itmo students"
+keywords = ["emulator", "education", "asm", "itmo", "basepc"]
+categories = ["emulators"]
 build = "build.rs"
 
 [target.'cfg(windows)'.build-dependencies]
