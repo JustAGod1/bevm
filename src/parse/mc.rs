@@ -526,7 +526,7 @@ impl MicroCommand for OperationalCommand0 {
         00 - 0 - это не регистр. Это просто ноль.\n\
         01 - А\n\
         10 - РС\n\
-        11 - КР",
+        11 - РК",
         );
         descriptor.range(
             11,
