@@ -279,7 +279,7 @@ fn write_to_file(s: &str, postfix: &str, popup_manager: &mut PopupManager) -> Op
     let postfixs = [postfix];
     let dialog = FileDialog::new().add_filter("", &postfixs);
 
-    let Some(filename) =  dialog.pick_file() else {
+    let Some(filename) =  dialog.save_file() else {
         popup_manager.open(PopupMessage::new(
                 "Ошибка выбора файла",
                 format!("Не могу открыть окно выбора файла"),
