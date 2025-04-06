@@ -135,7 +135,7 @@ enum DataLine<'a> {
 }
 
 fn is_variable_name_char(ch: char) -> bool {
-    ch.is_ascii_alphabetic() || ch.is_ascii_digit()
+    ch.is_ascii_alphanumeric() || ch == '_'
 }
 
 fn parse_line(line: &str) -> Option<DataLine> {
