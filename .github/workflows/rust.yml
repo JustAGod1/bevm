@@ -16,6 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Refresh repos
+      run: sudo apt-get update
     - name: Install cmake
       run: sudo apt-get install cmake
     - name: Install gtk
